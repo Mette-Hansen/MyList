@@ -22,25 +22,20 @@
         <ul class="items-list" id="todo-list">
             <li class="empty-state">No tasks yet — add one below!</li>
         </ul>
-        <div class="add-form">
-            <input type="text" class="add-input" id="todo-input" placeholder="Add a task..." maxlength="200">
+        <div class="todo-add-form">
+            <input type="text" class="add-input todo-text-input" id="todo-input" placeholder="Add a task..." maxlength="200">
+            <select class="add-input" id="todo-priority">
+                <option value="">Priority</option>
+                <option value="high">High</option>
+                <option value="mid">Mid</option>
+                <option value="low">Low</option>
+            </select>
+            <input type="date" class="add-input" id="todo-deadline">
+            <label class="todo-needs-help-label">
+                <input type="checkbox" id="todo-needs-help">
+                <span>Needs help</span>
+            </label>
             <button class="add-btn" id="todo-add">+</button>
-        </div>
-    </div>
-
-    <!-- Furniture Section -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-icon">🛋️</span>
-            <span class="section-title">Furniture to Buy</span>
-            <span class="item-count" id="furniture-count">—</span>
-        </div>
-        <ul class="items-list" id="furniture-list">
-            <li class="empty-state">No furniture yet — add one below!</li>
-        </ul>
-        <div class="add-form">
-            <input type="text" class="add-input" id="furniture-input" placeholder="Add furniture..." maxlength="200">
-            <button class="add-btn" id="furniture-add">+</button>
         </div>
     </div>
 
@@ -59,7 +54,7 @@
         <div class="shopping-add-form">
             <input type="text"   class="add-input" id="shop-item"     placeholder="Item"     maxlength="100">
             <input type="text"   class="add-input" id="shop-store"    placeholder="Store"    maxlength="100">
-            <input type="number" class="add-input" id="shop-price"    placeholder="Price"    min="0" step="0.01">
+            <input type="number" class="add-input" id="shop-price"    placeholder="Price"    min="0" step="1">
             <input type="number" class="add-input" id="shop-qty"      placeholder="Qty"      min="1" step="1" value="1">
             <button class="add-btn" id="shopping-add">+</button>
         </div>
@@ -108,16 +103,20 @@
             return d.innerHTML;
         }
 
-        // ── Simple checklist lists (To Do + Furniture) ──────────────────────
+        // ── To Do ────────────────────────────────────────────────────────────
 
-        function renderList(listEl, countEl, collectionName, items) {
-            const placeholders = {
-                todos: 'No tasks yet — add one below!',
-                furniture: 'No furniture yet — add one below!'
-            };
+        const PRIORITY = {
+            high: { cls: 'priority-high', label: 'High' },
+            mid:  { cls: 'priority-mid',  label: 'Mid'  },
+            low:  { cls: 'priority-low',  label: 'Low'  },
+        };
+
+        function renderTodos(items) {
+            const listEl  = document.getElementById('todo-list');
+            const countEl = document.getElementById('todo-count');
 
             if (items.length === 0) {
-                listEl.innerHTML = `<li class="empty-state">${placeholders[collectionName]}</li>`;
+                listEl.innerHTML = '<li class="empty-state">No tasks yet — add one below!</li>';
                 countEl.textContent = '—';
                 return;
             }
@@ -129,26 +128,69 @@
             items.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'item';
+
+                const pri = PRIORITY[item.priority];
+                const priorityBadge = pri
+                    ? `<span class="todo-priority ${pri.cls}">${pri.label}</span>`
+                    : '';
+
+                const metaParts = [];
+                if (item.deadline) {
+                    const d    = new Date(item.deadline + 'T00:00:00');
+                    const opts = d.getFullYear() === new Date().getFullYear()
+                        ? { month: 'short', day: 'numeric' }
+                        : { month: 'short', day: 'numeric', year: 'numeric' };
+                    metaParts.push(`<span>📅 ${d.toLocaleDateString('en-GB', opts)}</span>`);
+                }
+                if (item.needsHelp) {
+                    metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
+                }
+                const metaHtml = metaParts.length
+                    ? `<div class="todo-meta">${metaParts.join('')}</div>`
+                    : '';
+
                 li.innerHTML = `
                     <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
-                    <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                    <div class="todo-content">
+                        <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                        ${metaHtml}
+                    </div>
+                    ${priorityBadge}
                     <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
                 `;
                 listEl.appendChild(li);
             });
         }
 
-        function setupList(collectionName, listElId, countElId, inputElId, addBtnElId) {
-            const listEl = document.getElementById(listElId);
-            const countEl = document.getElementById(countElId);
-            const inputEl = document.getElementById(inputElId);
-            const addBtn = document.getElementById(addBtnElId);
-            const col = collection(db, collectionName);
-            const q = query(col, orderBy('createdAt', 'asc'));
+        const SAMPLE_TODOS = [
+            { text: 'Book moving company',       priority: 'high', deadline: '2026-05-01', needsHelp: false },
+            { text: 'Measure rooms for furniture', priority: 'high', deadline: '2026-04-25', needsHelp: false },
+            { text: 'Set up internet connection', priority: 'mid',  deadline: '2026-05-05', needsHelp: true  },
+            { text: 'Assemble IKEA shelves',      priority: 'mid',  deadline: null,         needsHelp: true  },
+            { text: 'Buy cleaning supplies',      priority: 'low',  deadline: null,         needsHelp: false },
+            { text: 'Update address with bank',   priority: 'low',  deadline: '2026-05-15', needsHelp: false },
+        ];
 
+        async function seedTodos(col) {
+            for (const item of SAMPLE_TODOS) {
+                await addDoc(col, { ...item, completed: false, createdAt: serverTimestamp() });
+            }
+        }
+
+        function setupTodos() {
+            const listEl = document.getElementById('todo-list');
+            const col    = collection(db, 'todos');
+            const q      = query(col, orderBy('createdAt', 'asc'));
+
+            let seeded = false;
             onSnapshot(q, snapshot => {
                 const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderList(listEl, countEl, collectionName, items);
+                if (items.length === 0 && !seeded) {
+                    seeded = true;
+                    seedTodos(col);
+                    return;
+                }
+                renderTodos(items);
                 setStatus('Synced ✓');
             }, err => {
                 setStatus('Could not connect — check your Firebase config', true);
@@ -156,28 +198,45 @@
             });
 
             async function addItem() {
-                const text = inputEl.value.trim();
+                const text      = document.getElementById('todo-input').value.trim();
+                const priority  = document.getElementById('todo-priority').value;
+                const deadline  = document.getElementById('todo-deadline').value;
+                const needsHelp = document.getElementById('todo-needs-help').checked;
                 if (!text) return;
-                inputEl.value = '';
+
+                document.getElementById('todo-input').value        = '';
+                document.getElementById('todo-priority').value     = '';
+                document.getElementById('todo-deadline').value     = '';
+                document.getElementById('todo-needs-help').checked = false;
+
                 try {
-                    await addDoc(col, { text, completed: false, createdAt: serverTimestamp() });
+                    await addDoc(col, {
+                        text,
+                        priority:  priority  || null,
+                        deadline:  deadline  || null,
+                        needsHelp: needsHelp,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
                 } catch (e) {
                     setStatus('Failed to save item', true);
                     console.error(e);
                 }
             }
 
-            addBtn.addEventListener('click', addItem);
-            inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+            document.getElementById('todo-add').addEventListener('click', addItem);
+            document.getElementById('todo-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter') addItem();
+            });
 
             listEl.addEventListener('click', async e => {
-                const checkbox = e.target.closest('.item-checkbox');
+                const checkbox  = e.target.closest('.item-checkbox');
                 const deleteBtn = e.target.closest('.item-delete');
 
                 if (checkbox) {
                     const isChecked = checkbox.classList.contains('checked');
                     try {
-                        await updateDoc(doc(db, collectionName, checkbox.dataset.id), { completed: !isChecked });
+                        await updateDoc(doc(db, 'todos', checkbox.dataset.id), { completed: !isChecked });
                     } catch (err) {
                         setStatus('Failed to update item', true);
                     }
@@ -185,7 +244,7 @@
 
                 if (deleteBtn) {
                     try {
-                        await deleteDoc(doc(db, collectionName, deleteBtn.dataset.id));
+                        await deleteDoc(doc(db, 'todos', deleteBtn.dataset.id));
                     } catch (err) {
                         setStatus('Failed to delete item', true);
                     }
@@ -193,14 +252,13 @@
             });
         }
 
-        setupList('todos', 'todo-list', 'todo-count', 'todo-input', 'todo-add');
-        setupList('furniture', 'furniture-list', 'furniture-count', 'furniture-input', 'furniture-add');
+        setupTodos();
 
         // ── Shopping Overview ────────────────────────────────────────────────
 
         function formatPrice(price) {
             if (price == null || price === '') return '—';
-            return Number(price).toLocaleString('da-DK', { style: 'currency', currency: 'DKK' });
+            return Number(price).toLocaleString('da-DK', { style: 'currency', currency: 'DKK', minimumFractionDigits: 0, maximumFractionDigits: 0 });
         }
 
         function renderShopping(items) {
@@ -216,10 +274,11 @@
             const remaining = items.filter(i => !i.completed).length;
             countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
-            // Group by store name, sorted alphabetically (blanks last)
+            // Group by store name, case-insensitive, sorted alphabetically (blanks last)
+            const toTitleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
             const groupMap = new Map();
             items.forEach(item => {
-                const key = item.store?.trim() || '';
+                const key = item.store?.trim().toLowerCase() || '';
                 if (!groupMap.has(key)) groupMap.set(key, []);
                 groupMap.get(key).push(item);
             });
@@ -235,7 +294,7 @@
             let bodyRows = '';
 
             groups.forEach((groupItems, storeName) => {
-                const storeLabel = storeName || 'No store';
+                const storeLabel = storeName ? toTitleCase(storeName) : 'No store';
                 bodyRows += `
                     <tr class="store-header">
                         <td colspan="5">${escapeHtml(storeLabel)}</td>
@@ -338,7 +397,7 @@
                     await addDoc(col, {
                         text,
                         store: store || '',
-                        price: price !== '' ? parseFloat(price) : null,
+                        price: price !== '' ? Math.round(parseFloat(price)) : null,
                         qty: parseInt(qty) || 1,
                         completed: false,
                         createdAt: serverTimestamp()
