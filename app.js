@@ -276,47 +276,61 @@ function parseDanishPrice(str) {
 }
 
 async function fetchWithProxy(url) {
-    const proxies = [
-        async () => {
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-            if (!res.ok) throw new Error(`corsproxy ${res.status}`);
-            return res.text();
-        },
-        async () => {
-            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-            if (!res.ok) throw new Error(`allorigins ${res.status}`);
-            const { contents } = await res.json();
-            return contents;
-        },
+    const enc = encodeURIComponent(url);
+    const attempts = [
+        () => fetch(`https://corsproxy.io/?${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+        () => fetch(`https://api.allorigins.win/raw?url=${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+        () => fetch(`https://api.allorigins.win/get?url=${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => d.contents),
     ];
-
-    for (const attempt of proxies) {
-        try { return await attempt(); } catch {}
+    for (const attempt of attempts) {
+        try {
+            const html = await attempt();
+            if (html && html.length > 500) return html;
+        } catch {}
     }
     throw new Error('All proxies failed');
 }
 
+function searchForPrice(obj, depth = 0) {
+    if (depth > 10 || !obj || typeof obj !== 'object') return null;
+    const keys = ['price', 'salesPrice', 'currentPrice', 'salePrice', 'sellingPrice', 'discountedPrice', 'amount'];
+    for (const key of keys) {
+        if (obj[key] != null) {
+            const p = typeof obj[key] === 'number'
+                ? Math.round(obj[key])
+                : parseDanishPrice(String(obj[key]));
+            if (p && p > 0 && p < 1_000_000) return p;
+        }
+    }
+    for (const val of Object.values(obj)) {
+        if (val && typeof val === 'object') {
+            const found = searchForPrice(val, depth + 1);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
 async function fetchProduct(url) {
     const contents = await fetchWithProxy(url);
-
-    const doc = new DOMParser().parseFromString(contents, 'text/html');
+    const doc      = new DOMParser().parseFromString(contents, 'text/html');
 
     // Title: og:title → twitter:title → <title>
     const title =
         doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
         doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
-        doc.title ||
-        '';
+        doc.title || '';
 
-    // Price: og meta → schema.org JSON-LD → text regex
     let price = null;
 
+    // 1. og/meta price tags
     const priceMeta =
         doc.querySelector('meta[property="og:price:amount"]')?.getAttribute('content') ||
         doc.querySelector('meta[property="product:price:amount"]')?.getAttribute('content') ||
         doc.querySelector('meta[name="price"]')?.getAttribute('content');
     if (priceMeta) price = parseDanishPrice(priceMeta);
 
+    // 2. JSON-LD schema.org
     if (!price) {
         for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
             try {
@@ -330,11 +344,31 @@ async function fetchProduct(url) {
         }
     }
 
-    // Store: guess from hostname
+    // 3. Next.js __NEXT_DATA__ (used by ilva.dk and many other shops)
+    if (!price) {
+        const nextEl = doc.getElementById('__NEXT_DATA__');
+        if (nextEl) {
+            try { price = searchForPrice(JSON.parse(nextEl.textContent)); } catch {}
+        }
+    }
+
+    // 4. Scan inline scripts for price patterns
+    if (!price) {
+        const pricePattern = /"(?:price|salesPrice|currentPrice|salePrice|sellingPrice|discountedPrice)"\s*:\s*([\d.,]+)/i;
+        for (const script of doc.querySelectorAll('script:not([src]):not([type="application/ld+json"])')) {
+            const m = script.textContent.match(pricePattern);
+            if (m) {
+                const p = parseDanishPrice(m[1]);
+                if (p && p > 0 && p < 1_000_000) { price = p; break; }
+            }
+        }
+    }
+
     const hostname  = new URL(url).hostname.replace(/^www\./, '');
     const storePart = hostname.split('.')[0];
     const store     = storePart.charAt(0).toUpperCase() + storePart.slice(1);
 
+    console.log('[fetchProduct]', { title, price, store, htmlLength: contents.length });
     return { title: title.trim(), price, store };
 }
 
