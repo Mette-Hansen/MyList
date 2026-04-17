@@ -308,17 +308,23 @@ h1 {
     line-height: 1.8;
 }
 
-.bookmarklet-copy-row {
-    display: flex;
-    gap: 8px;
+.bookmarklet-btn {
+    display: inline-block;
+    background: #8b6f47;
+    color: white;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: grab;
+    transition: background 0.2s;
+    white-space: nowrap;
+    user-select: none;
 }
 
-.bookmarklet-code {
-    flex: 1;
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: #8b6f47;
-    cursor: text;
+.bookmarklet-btn:hover {
+    background: #7a6040;
 }
 
 .bookmarklet-status {

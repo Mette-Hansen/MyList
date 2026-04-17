@@ -267,16 +267,7 @@ function setupBookmarklet() {
     // Bookmarklet runs on the product page (no CORS issues) and opens MyList with params
     const code = `(function(){var t=(document.querySelector('meta[property="og:title"]')||{}).getAttribute('content')||(document.querySelector('h1')||{}).textContent||document.title||'';t=t.trim();var p=null;var pm=document.querySelector('meta[property="og:price:amount"]')||document.querySelector('meta[property="product:price:amount"]');if(pm)p=pm.getAttribute('content');if(!p){[].forEach.call(document.querySelectorAll('script[type="application/ld+json"]'),function(s){if(p)return;try{var j=JSON.parse(s.textContent);if(Array.isArray(j))j=j.find(function(x){return x['@type']==='Product';});if(j&&j.offers){var o=Array.isArray(j.offers)?j.offers[0]:j.offers;if(o&&o.price!=null)p=o.price;}}catch(e){}});}if(!p){var nd=document.getElementById('__NEXT_DATA__');if(nd){try{var sr=function(o,d){if(!o||typeof o!=='object'||d>8)return null;var ks=['price','salesPrice','currentPrice','salePrice','sellingPrice'];for(var i=0;i<ks.length;i++){var v=o[ks[i]];if(v>0&&v<1000000)return v;}var vs=Object.values(o);for(var i=0;i<vs.length;i++){var f=sr(vs[i],d+1);if(f)return f;}return null;};p=sr(JSON.parse(nd.textContent),0);}catch(e){}}}if(p!=null){var s=String(p).replace(/[^0-9.,]/g,'');if(/^\\d{1,3}(\\.\\d{3})+(,\\d*)?$/.test(s))s=s.replace(/\\./g,'').replace(',','.');else s=s.replace(',','.');p=Math.round(parseFloat(s))||null;}var h=location.hostname.replace(/^www\\./,'').split('.')[0];var st=h.charAt(0).toUpperCase()+h.slice(1);var u=new URLSearchParams();if(t)u.set('item',t);if(st)u.set('store',st);if(p)u.set('price',p);location.href='${appUrl}?'+u.toString();})();`;
 
-    const fullCode = 'javascript:' + code;
-    document.getElementById('bookmarklet-code').value = fullCode;
-
-    document.getElementById('bookmarklet-copy').addEventListener('click', () => {
-        navigator.clipboard.writeText(fullCode).then(() => {
-            const s = document.getElementById('bookmarklet-status');
-            s.textContent = 'Copied! Now right-click your bookmarks bar → Add page… → paste as the URL.';
-            setTimeout(() => s.textContent = '', 6000);
-        });
-    });
+    document.getElementById('bookmarklet-link').href = 'javascript:' + code;
 }
 
 function readImportParams() {
