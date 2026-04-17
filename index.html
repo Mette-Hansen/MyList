@@ -250,10 +250,6 @@
             font-weight: 500;
         }
 
-        .shopping-table .col-store {
-            color: #6b7280;
-        }
-
         .shopping-table .col-price {
             white-space: nowrap;
             color: #5c4a32;
@@ -271,14 +267,37 @@
             color: #b0a090;
         }
 
+        /* Store group header row */
+        .shopping-table tr.store-header td {
+            background: #f8f4f0;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #8b6f47;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 6px 8px;
+            border-bottom: none;
+        }
+
+        /* Store subtotal row */
+        .shopping-table tr.store-subtotal td {
+            font-size: 0.8rem;
+            color: #8b6f47;
+            padding: 4px 8px 10px;
+            border-bottom: 2px solid #e8ddd4;
+            text-align: right;
+        }
+
+        .shopping-table tr.store-subtotal td:first-child {
+            text-align: left;
+        }
+
         .shopping-total {
             display: flex;
             justify-content: flex-end;
             align-items: center;
             gap: 8px;
-            padding: 10px 0 14px;
-            border-top: 2px solid #f0ebe4;
-            margin-bottom: 14px;
+            padding: 12px 0 14px;
             font-size: 0.9rem;
             color: #5c4a32;
         }
@@ -302,14 +321,6 @@
 
             .shopping-add-form .add-btn {
                 grid-column: span 2;
-            }
-
-            .shopping-table .col-store {
-                display: none;
-            }
-
-            .shopping-table thead th.th-store {
-                display: none;
             }
         }
     </style>
@@ -511,7 +522,7 @@
         }
 
         function renderShopping(items) {
-            const wrap = document.getElementById('shopping-table-wrap');
+            const wrap    = document.getElementById('shopping-table-wrap');
             const countEl = document.getElementById('shopping-count');
 
             if (items.length === 0) {
@@ -523,56 +534,105 @@
             const remaining = items.filter(i => !i.completed).length;
             countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
-            const totalCost = items
-                .filter(i => !i.completed)
-                .reduce((sum, i) => sum + (parseFloat(i.price) || 0) * (parseInt(i.qty) || 1), 0);
+            // Group by store (preserve insertion order, blanks last)
+            const groups = new Map();
+            items.forEach(item => {
+                const key = item.store?.trim() || '';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(item);
+            });
 
-            const rows = items.map(item => {
-                const price = parseFloat(item.price);
-                const qty = parseInt(item.qty) || 1;
-                const lineTotal = !isNaN(price) ? price * qty : null;
-                const done = item.completed ? 'row-completed' : '';
-                return `
-                <tr class="${done}" data-id="${item.id}">
-                    <td>
-                        <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
-                    </td>
-                    <td class="col-item">${escapeHtml(item.text || '')}</td>
-                    <td class="col-store">${escapeHtml(item.store || '—')}</td>
-                    <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
-                    <td class="col-qty">× ${qty}</td>
-                    <td>
-                        <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
-                    </td>
-                </tr>`;
-            }).join('');
+            // Move blank-store group to end
+            if (groups.has('')) {
+                const blank = groups.get('');
+                groups.delete('');
+                groups.set('', blank);
+            }
+
+            let grandTotal = 0;
+            let bodyRows = '';
+
+            groups.forEach((groupItems, storeName) => {
+                const storeLabel = storeName || 'No store';
+                bodyRows += `
+                    <tr class="store-header">
+                        <td colspan="5">${escapeHtml(storeLabel)}</td>
+                    </tr>`;
+
+                let storeTotal = 0;
+                groupItems.forEach(item => {
+                    const price    = parseFloat(item.price);
+                    const qty      = parseInt(item.qty) || 1;
+                    const lineTotal = !isNaN(price) ? price * qty : null;
+                    if (lineTotal != null && !item.completed) {
+                        storeTotal  += lineTotal;
+                        grandTotal  += lineTotal;
+                    }
+                    const done = item.completed ? 'row-completed' : '';
+                    bodyRows += `
+                        <tr class="${done}">
+                            <td><div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div></td>
+                            <td class="col-item">${escapeHtml(item.text || '')}</td>
+                            <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
+                            <td class="col-qty">× ${qty}</td>
+                            <td><button class="item-delete" data-id="${item.id}" title="Delete">×</button></td>
+                        </tr>`;
+                });
+
+                bodyRows += `
+                    <tr class="store-subtotal">
+                        <td colspan="2">Subtotal</td>
+                        <td colspan="3">${formatPrice(storeTotal)}</td>
+                    </tr>`;
+            });
 
             wrap.innerHTML = `
                 <table class="shopping-table">
                     <thead>
                         <tr>
-                            <th></th>
+                            <th style="width:32px"></th>
                             <th>Item</th>
-                            <th class="th-store">Store</th>
-                            <th>Total</th>
+                            <th>Price</th>
                             <th>Qty</th>
-                            <th></th>
+                            <th style="width:36px"></th>
                         </tr>
                     </thead>
-                    <tbody>${rows}</tbody>
+                    <tbody>${bodyRows}</tbody>
                 </table>
                 <div class="shopping-total">
-                    <span>Estimated total</span>
-                    <span>${formatPrice(totalCost)}</span>
+                    <span>Grand total</span>
+                    <span>${formatPrice(grandTotal)}</span>
                 </div>`;
+        }
+
+        const SAMPLE_ITEMS = [
+            { text: 'Sofa',            store: 'IKEA',    price: 4999, qty: 1 },
+            { text: 'Coffee table',    store: 'IKEA',    price: 1299, qty: 1 },
+            { text: 'Bookshelf',       store: 'IKEA',    price:  799, qty: 2 },
+            { text: 'Wall paint',      store: 'Bauhaus', price:  189, qty: 3 },
+            { text: 'Paint brushes',   store: 'Bauhaus', price:   49, qty: 2 },
+            { text: 'Cleaning kit',    store: 'Netto',   price:   85, qty: 1 },
+            { text: 'Dish soap',       store: 'Netto',   price:   25, qty: 2 },
+        ];
+
+        async function seedSampleData(col) {
+            for (const item of SAMPLE_ITEMS) {
+                await addDoc(col, { ...item, completed: false, createdAt: serverTimestamp() });
+            }
         }
 
         function setupShopping() {
             const col = collection(db, 'shopping');
-            const q = query(col, orderBy('createdAt', 'asc'));
+            const q   = query(col, orderBy('createdAt', 'asc'));
 
+            let seeded = false;
             onSnapshot(q, snapshot => {
                 const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (items.length === 0 && !seeded) {
+                    seeded = true;
+                    seedSampleData(col);
+                    return;
+                }
                 renderShopping(items);
                 setStatus('Synced ✓');
             }, err => {
