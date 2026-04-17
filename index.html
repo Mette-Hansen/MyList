@@ -56,8 +56,18 @@
         </div>
 
         <div class="bookmarklet-wrap">
-            <p class="bookmarklet-hint">Drag this button to your bookmarks bar — or right-click it and choose <em>Bookmark link</em>. Then click it on any product page and it will bring you back here with the item pre-filled.</p>
-            <a class="bookmarklet-btn" id="bookmarklet-link" href="#">📌 Add to MyList</a>
+            <p class="bookmarklet-hint">Add a browser bookmark that reads product info from any shop page and brings you back here with the form pre-filled.</p>
+            <ol class="bookmarklet-steps">
+                <li>Click <strong>Copy code</strong> below</li>
+                <li>Right-click your bookmarks bar → <strong>Add page…</strong> (Chrome) or <strong>New Bookmark</strong> (Firefox)</li>
+                <li>Set the name to <em>Add to MyList</em> and paste the code as the URL</li>
+                <li>Save — then click the bookmark on any product page</li>
+            </ol>
+            <div class="bookmarklet-copy-row">
+                <input class="add-input bookmarklet-code" id="bookmarklet-code" readonly value="">
+                <button class="add-btn" id="bookmarklet-copy">Copy</button>
+            </div>
+            <p class="bookmarklet-status" id="bookmarklet-status"></p>
         </div>
 
         <div class="shopping-add-form">
