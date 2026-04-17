@@ -196,6 +196,122 @@
             color: #c0504a;
             font-weight: 500;
         }
+
+        /* ── Shopping Overview ── */
+        .shopping-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+        }
+
+        .shopping-table thead th {
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #8b6f47;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 8px 10px 8px;
+            border-bottom: 2px solid #f0ebe4;
+        }
+
+        .shopping-table thead th:first-child {
+            padding-left: 0;
+            width: 32px;
+        }
+
+        .shopping-table thead th:last-child {
+            width: 36px;
+        }
+
+        .shopping-table tbody tr {
+            border-bottom: 1px solid #f0ebe4;
+        }
+
+        .shopping-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .shopping-table td {
+            padding: 10px 8px;
+            vertical-align: middle;
+        }
+
+        .shopping-table td:first-child {
+            padding-left: 0;
+        }
+
+        .shopping-table td:last-child {
+            padding-right: 0;
+        }
+
+        .shopping-table .col-item {
+            font-weight: 500;
+        }
+
+        .shopping-table .col-store {
+            color: #6b7280;
+        }
+
+        .shopping-table .col-price {
+            white-space: nowrap;
+            color: #5c4a32;
+            font-weight: 500;
+        }
+
+        .shopping-table .col-qty {
+            text-align: center;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+
+        .shopping-table tr.row-completed td {
+            text-decoration: line-through;
+            color: #b0a090;
+        }
+
+        .shopping-total {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0 14px;
+            border-top: 2px solid #f0ebe4;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+            color: #5c4a32;
+        }
+
+        .shopping-total span:last-child {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .shopping-add-form {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        @media (max-width: 560px) {
+            .shopping-add-form {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .shopping-add-form .add-btn {
+                grid-column: span 2;
+            }
+
+            .shopping-table .col-store {
+                display: none;
+            }
+
+            .shopping-table thead th.th-store {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -235,6 +351,27 @@
         </div>
     </div>
 
+    <!-- Shopping Overview Section -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">🛒</span>
+            <span class="section-title">Shopping Overview</span>
+            <span class="item-count" id="shopping-count">—</span>
+        </div>
+
+        <div id="shopping-table-wrap">
+            <p class="empty-state">No items yet — add one below!</p>
+        </div>
+
+        <div class="shopping-add-form">
+            <input type="text"   class="add-input" id="shop-item"     placeholder="Item"     maxlength="100">
+            <input type="text"   class="add-input" id="shop-store"    placeholder="Store"    maxlength="100">
+            <input type="number" class="add-input" id="shop-price"    placeholder="Price"    min="0" step="0.01">
+            <input type="number" class="add-input" id="shop-qty"      placeholder="Qty"      min="1" step="1" value="1">
+            <button class="add-btn" id="shopping-add">+</button>
+        </div>
+    </div>
+
     <div class="status-bar" id="status">Connecting...</div>
 
     <script type="module">
@@ -252,7 +389,6 @@
             serverTimestamp
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // ── STEP 1: Paste your Firebase config here ──────────────────────────
         const firebaseConfig = {
             apiKey: "AIzaSyASHshwFhuA_TOaSJv34B21JbhlBoimecg",
             authDomain: "todo-3d76e.firebaseapp.com",
@@ -262,7 +398,6 @@
             appId: "1:679016347673:web:b2e2cee2cade51e8fa9288",
             measurementId: "G-F1HBKELYLE"
         };
-        // ─────────────────────────────────────────────────────────────────────
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -279,6 +414,8 @@
             d.appendChild(document.createTextNode(text));
             return d.innerHTML;
         }
+
+        // ── Simple checklist lists (To Do + Furniture) ──────────────────────
 
         function renderList(listEl, countEl, collectionName, items) {
             const placeholders = {
@@ -316,7 +453,6 @@
             const col = collection(db, collectionName);
             const q = query(col, orderBy('createdAt', 'asc'));
 
-            // Live sync from Firestore
             onSnapshot(q, snapshot => {
                 const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderList(listEl, countEl, collectionName, items);
@@ -326,7 +462,6 @@
                 console.error(err);
             });
 
-            // Add new item
             async function addItem() {
                 const text = inputEl.value.trim();
                 if (!text) return;
@@ -342,7 +477,6 @@
             addBtn.addEventListener('click', addItem);
             inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
 
-            // Toggle checked / delete via event delegation
             listEl.addEventListener('click', async e => {
                 const checkbox = e.target.closest('.item-checkbox');
                 const deleteBtn = e.target.closest('.item-delete');
@@ -368,6 +502,142 @@
 
         setupList('todos', 'todo-list', 'todo-count', 'todo-input', 'todo-add');
         setupList('furniture', 'furniture-list', 'furniture-count', 'furniture-input', 'furniture-add');
+
+        // ── Shopping Overview ────────────────────────────────────────────────
+
+        function formatPrice(price) {
+            if (price == null || price === '') return '—';
+            return Number(price).toLocaleString('da-DK', { style: 'currency', currency: 'DKK' });
+        }
+
+        function renderShopping(items) {
+            const wrap = document.getElementById('shopping-table-wrap');
+            const countEl = document.getElementById('shopping-count');
+
+            if (items.length === 0) {
+                wrap.innerHTML = '<p class="empty-state">No items yet — add one below!</p>';
+                countEl.textContent = '—';
+                return;
+            }
+
+            const remaining = items.filter(i => !i.completed).length;
+            countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
+
+            const totalCost = items
+                .filter(i => !i.completed)
+                .reduce((sum, i) => sum + (parseFloat(i.price) || 0) * (parseInt(i.qty) || 1), 0);
+
+            const rows = items.map(item => {
+                const price = parseFloat(item.price);
+                const qty = parseInt(item.qty) || 1;
+                const lineTotal = !isNaN(price) ? price * qty : null;
+                const done = item.completed ? 'row-completed' : '';
+                return `
+                <tr class="${done}" data-id="${item.id}">
+                    <td>
+                        <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
+                    </td>
+                    <td class="col-item">${escapeHtml(item.text || '')}</td>
+                    <td class="col-store">${escapeHtml(item.store || '—')}</td>
+                    <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
+                    <td class="col-qty">× ${qty}</td>
+                    <td>
+                        <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            wrap.innerHTML = `
+                <table class="shopping-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Item</th>
+                            <th class="th-store">Store</th>
+                            <th>Total</th>
+                            <th>Qty</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <div class="shopping-total">
+                    <span>Estimated total</span>
+                    <span>${formatPrice(totalCost)}</span>
+                </div>`;
+        }
+
+        function setupShopping() {
+            const col = collection(db, 'shopping');
+            const q = query(col, orderBy('createdAt', 'asc'));
+
+            onSnapshot(q, snapshot => {
+                const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderShopping(items);
+                setStatus('Synced ✓');
+            }, err => {
+                setStatus('Could not connect — check your Firebase config', true);
+                console.error(err);
+            });
+
+            async function addItem() {
+                const text  = document.getElementById('shop-item').value.trim();
+                const store = document.getElementById('shop-store').value.trim();
+                const price = document.getElementById('shop-price').value;
+                const qty   = document.getElementById('shop-qty').value || '1';
+                if (!text) return;
+
+                document.getElementById('shop-item').value  = '';
+                document.getElementById('shop-store').value = '';
+                document.getElementById('shop-price').value = '';
+                document.getElementById('shop-qty').value   = '1';
+
+                try {
+                    await addDoc(col, {
+                        text,
+                        store: store || '',
+                        price: price !== '' ? parseFloat(price) : null,
+                        qty: parseInt(qty) || 1,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
+                } catch (e) {
+                    setStatus('Failed to save item', true);
+                    console.error(e);
+                }
+            }
+
+            document.getElementById('shopping-add').addEventListener('click', addItem);
+            ['shop-item','shop-store','shop-price','shop-qty'].forEach(id => {
+                document.getElementById(id).addEventListener('keydown', e => {
+                    if (e.key === 'Enter') addItem();
+                });
+            });
+
+            document.getElementById('shopping-table-wrap').addEventListener('click', async e => {
+                const checkbox  = e.target.closest('.item-checkbox');
+                const deleteBtn = e.target.closest('.item-delete');
+
+                if (checkbox) {
+                    const isChecked = checkbox.classList.contains('checked');
+                    try {
+                        await updateDoc(doc(db, 'shopping', checkbox.dataset.id), { completed: !isChecked });
+                    } catch (err) {
+                        setStatus('Failed to update item', true);
+                    }
+                }
+
+                if (deleteBtn) {
+                    try {
+                        await deleteDoc(doc(db, 'shopping', deleteBtn.dataset.id));
+                    } catch (err) {
+                        setStatus('Failed to delete item', true);
+                    }
+                }
+            });
+        }
+
+        setupShopping();
     </script>
 
 </body>
