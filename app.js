@@ -97,34 +97,13 @@ function renderTodos(items) {
     });
 }
 
-const SAMPLE_TODOS = [
-    { text: 'Book moving company',        priority: 'high', deadline: '2026-05-01', needsHelp: false },
-    { text: 'Measure rooms for furniture', priority: 'high', deadline: '2026-04-25', needsHelp: false },
-    { text: 'Set up internet connection',  priority: 'mid',  deadline: '2026-05-05', needsHelp: true  },
-    { text: 'Assemble IKEA shelves',       priority: 'mid',  deadline: null,         needsHelp: true  },
-    { text: 'Buy cleaning supplies',       priority: 'low',  deadline: null,         needsHelp: false },
-    { text: 'Update address with bank',    priority: 'low',  deadline: '2026-05-15', needsHelp: false },
-];
-
-async function seedTodos(col) {
-    for (const item of SAMPLE_TODOS) {
-        await addDoc(col, { ...item, completed: false, createdAt: serverTimestamp() });
-    }
-}
-
 function setupTodos() {
     const listEl = document.getElementById('todo-list');
     const col    = collection(db, 'todos');
     const q      = query(col, orderBy('createdAt', 'asc'));
 
-    let seeded = false;
     onSnapshot(q, snapshot => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (items.length === 0 && !seeded) {
-            seeded = true;
-            seedTodos(col);
-            return;
-        }
         renderTodos(items);
         setStatus('Synced ✓');
     }, err => {
@@ -280,22 +259,6 @@ function renderShopping(items) {
         </div>`;
 }
 
-const SAMPLE_ITEMS = [
-    { text: 'Sofa',          store: 'IKEA',    price: 4999, qty: 1 },
-    { text: 'Coffee table',  store: 'IKEA',    price: 1299, qty: 1 },
-    { text: 'Bookshelf',     store: 'IKEA',    price:  799, qty: 2 },
-    { text: 'Wall paint',    store: 'Bauhaus', price:  189, qty: 3 },
-    { text: 'Paint brushes', store: 'Bauhaus', price:   49, qty: 2 },
-    { text: 'Cleaning kit',  store: 'Netto',   price:   85, qty: 1 },
-    { text: 'Dish soap',     store: 'Netto',   price:   25, qty: 2 },
-];
-
-async function seedSampleData(col) {
-    for (const item of SAMPLE_ITEMS) {
-        await addDoc(col, { ...item, completed: false, createdAt: serverTimestamp() });
-    }
-}
-
 // ── Link import ─────────────────────────────────────────────────────
 
 function parseDanishPrice(str) {
@@ -312,11 +275,29 @@ function parseDanishPrice(str) {
     return isNaN(n) ? null : Math.round(n);
 }
 
+async function fetchWithProxy(url) {
+    const proxies = [
+        async () => {
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`corsproxy ${res.status}`);
+            return res.text();
+        },
+        async () => {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`allorigins ${res.status}`);
+            const { contents } = await res.json();
+            return contents;
+        },
+    ];
+
+    for (const attempt of proxies) {
+        try { return await attempt(); } catch {}
+    }
+    throw new Error('All proxies failed');
+}
+
 async function fetchProduct(url) {
-    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const res   = await fetch(proxy);
-    if (!res.ok) throw new Error('Proxy request failed');
-    const { contents } = await res.json();
+    const contents = await fetchWithProxy(url);
 
     const doc = new DOMParser().parseFromString(contents, 'text/html');
 
@@ -410,14 +391,8 @@ function setupShopping() {
     const col = collection(db, 'shopping');
     const q   = query(col, orderBy('createdAt', 'asc'));
 
-    let seeded = false;
     onSnapshot(q, snapshot => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (items.length === 0 && !seeded) {
-            seeded = true;
-            seedSampleData(col);
-            return;
-        }
         renderShopping(items);
         setStatus('Synced ✓');
     }, err => {
