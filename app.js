@@ -296,6 +296,116 @@ async function seedSampleData(col) {
     }
 }
 
+// ── Link import ─────────────────────────────────────────────────────
+
+function parseDanishPrice(str) {
+    if (!str) return null;
+    // Strip currency words/symbols and whitespace
+    let s = str.replace(/[a-zA-Z\s]/g, '').trim();
+    // Danish thousands separator: 1.299,00 → strip dots before comma
+    if (/^\d{1,3}(\.\d{3})+(,\d*)?$/.test(s)) {
+        s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+        s = s.replace(',', '.');
+    }
+    const n = parseFloat(s);
+    return isNaN(n) ? null : Math.round(n);
+}
+
+async function fetchProduct(url) {
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res   = await fetch(proxy);
+    if (!res.ok) throw new Error('Proxy request failed');
+    const { contents } = await res.json();
+
+    const doc = new DOMParser().parseFromString(contents, 'text/html');
+
+    // Title: og:title → twitter:title → <title>
+    const title =
+        doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+        doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+        doc.title ||
+        '';
+
+    // Price: og meta → schema.org JSON-LD → text regex
+    let price = null;
+
+    const priceMeta =
+        doc.querySelector('meta[property="og:price:amount"]')?.getAttribute('content') ||
+        doc.querySelector('meta[property="product:price:amount"]')?.getAttribute('content') ||
+        doc.querySelector('meta[name="price"]')?.getAttribute('content');
+    if (priceMeta) price = parseDanishPrice(priceMeta);
+
+    if (!price) {
+        for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+            try {
+                let json = JSON.parse(script.textContent);
+                if (Array.isArray(json)) json = json.find(j => j['@type'] === 'Product');
+                if (json?.['@type'] === 'Product' && json.offers) {
+                    const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
+                    if (offer?.price != null) { price = Math.round(parseFloat(offer.price)); break; }
+                }
+            } catch {}
+        }
+    }
+
+    // Store: guess from hostname
+    const hostname  = new URL(url).hostname.replace(/^www\./, '');
+    const storePart = hostname.split('.')[0];
+    const store     = storePart.charAt(0).toUpperCase() + storePart.slice(1);
+
+    return { title: title.trim(), price, store };
+}
+
+function setupLinkImport() {
+    const toggleBtn  = document.getElementById('link-toggle');
+    const form       = document.getElementById('link-form');
+    const urlInput   = document.getElementById('link-url');
+    const fetchBtn   = document.getElementById('link-fetch');
+    const statusEl   = document.getElementById('link-status');
+
+    toggleBtn.addEventListener('click', () => {
+        const hidden = form.hidden;
+        form.hidden  = !hidden;
+        toggleBtn.classList.toggle('active', hidden);
+        if (hidden) urlInput.focus();
+    });
+
+    async function doFetch() {
+        const url = urlInput.value.trim();
+        if (!url) return;
+        statusEl.textContent = 'Fetching…';
+        statusEl.className   = 'link-status';
+        fetchBtn.disabled    = true;
+
+        try {
+            const { title, price, store } = await fetchProduct(url);
+
+            document.getElementById('shop-item').value  = title  || '';
+            document.getElementById('shop-store').value = store  || '';
+            document.getElementById('shop-price').value = price != null ? price : '';
+
+            urlInput.value       = '';
+            form.hidden          = true;
+            toggleBtn.classList.remove('active');
+            statusEl.textContent = price != null
+                ? `Fetched: ${title || 'unknown'} — ${price} kr`
+                : `Fetched: ${title || 'unknown'} — price not found, enter manually`;
+            document.getElementById('shop-item').focus();
+        } catch (e) {
+            statusEl.textContent = 'Could not fetch — check the URL or try another site';
+            statusEl.className   = 'link-status error';
+            console.error(e);
+        } finally {
+            fetchBtn.disabled = false;
+        }
+    }
+
+    fetchBtn.addEventListener('click', doFetch);
+    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') doFetch(); });
+    urlInput.addEventListener('paste', () => setTimeout(doFetch, 50));
+}
+
 function setupShopping() {
     const col = collection(db, 'shopping');
     const q   = query(col, orderBy('createdAt', 'asc'));
@@ -373,3 +483,4 @@ function setupShopping() {
 }
 
 setupShopping();
+setupLinkImport();

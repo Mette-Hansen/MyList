@@ -278,6 +278,51 @@ h1 {
     }
 }
 
+/* ── Link import ── */
+
+.link-import {
+    margin-bottom: 14px;
+}
+
+.link-toggle-btn {
+    background: none;
+    border: 2px solid #e8ddd4;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    color: #8b6f47;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.link-toggle-btn:hover,
+.link-toggle-btn.active {
+    border-color: #8b6f47;
+    background: #f0e8de;
+}
+
+.link-import-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.link-import-form .add-input {
+    flex: 1;
+}
+
+.link-status {
+    font-size: 0.8rem;
+    color: #8b6f47;
+    margin-top: 6px;
+    min-height: 1em;
+}
+
+.link-status.error {
+    color: #c0504a;
+}
+
 /* ── Shopping Overview ── */
 
 .shopping-table {
