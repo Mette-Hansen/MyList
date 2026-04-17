@@ -51,13 +51,17 @@
             <p class="empty-state">No items yet — add one below!</p>
         </div>
 
-        <div class="link-import">
-            <button class="link-toggle-btn" id="link-toggle">🔗 Import from link</button>
-            <div class="link-import-form" id="link-form" hidden>
-                <input type="url" class="add-input" id="link-url" placeholder="Paste product URL...">
-                <button class="add-btn" id="link-fetch">→</button>
+        <div class="import-notice" id="import-notice" hidden>
+            📌 Imported from <span id="import-store"></span> — review and click + to save
+        </div>
+
+        <div class="bookmarklet-wrap">
+            <p class="bookmarklet-hint">Drag this to your bookmarks bar, then click it on any product page:</p>
+            <div class="bookmarklet-row">
+                <a class="bookmarklet-btn" id="bookmarklet-link" href="#">📌 Add to MyList</a>
+                <button class="bookmarklet-copy" id="bookmarklet-copy">Copy link</button>
             </div>
-            <p class="link-status" id="link-status"></p>
+            <p class="bookmarklet-status" id="bookmarklet-status"></p>
         </div>
 
         <div class="shopping-add-form">

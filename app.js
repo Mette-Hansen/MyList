@@ -259,166 +259,43 @@ function renderShopping(items) {
         </div>`;
 }
 
-// ── Link import ─────────────────────────────────────────────────────
+// ── Bookmarklet import ───────────────────────────────────────────────
 
-function parseDanishPrice(str) {
-    if (!str) return null;
-    // Strip currency words/symbols and whitespace
-    let s = str.replace(/[a-zA-Z\s]/g, '').trim();
-    // Danish thousands separator: 1.299,00 → strip dots before comma
-    if (/^\d{1,3}(\.\d{3})+(,\d*)?$/.test(s)) {
-        s = s.replace(/\./g, '').replace(',', '.');
-    } else {
-        s = s.replace(',', '.');
-    }
-    const n = parseFloat(s);
-    return isNaN(n) ? null : Math.round(n);
-}
+function setupBookmarklet() {
+    const appUrl = window.location.origin + window.location.pathname;
 
-async function fetchWithProxy(url) {
-    const enc = encodeURIComponent(url);
-    const attempts = [
-        () => fetch(`https://corsproxy.io/?${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
-        () => fetch(`https://api.allorigins.win/raw?url=${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
-        () => fetch(`https://api.allorigins.win/get?url=${enc}`, { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => d.contents),
-    ];
-    for (const attempt of attempts) {
-        try {
-            const html = await attempt();
-            if (html && html.length > 500) return html;
-        } catch {}
-    }
-    throw new Error('All proxies failed');
-}
+    // Bookmarklet runs on the product page (no CORS issues) and opens MyList with params
+    const code = `(function(){var t=(document.querySelector('meta[property="og:title"]')||{}).getAttribute('content')||(document.querySelector('h1')||{}).textContent||document.title||'';t=t.trim();var p=null;var pm=document.querySelector('meta[property="og:price:amount"]')||document.querySelector('meta[property="product:price:amount"]');if(pm)p=pm.getAttribute('content');if(!p){[].forEach.call(document.querySelectorAll('script[type="application/ld+json"]'),function(s){if(p)return;try{var j=JSON.parse(s.textContent);if(Array.isArray(j))j=j.find(function(x){return x['@type']==='Product';});if(j&&j.offers){var o=Array.isArray(j.offers)?j.offers[0]:j.offers;if(o&&o.price!=null)p=o.price;}}catch(e){}});}if(!p){var nd=document.getElementById('__NEXT_DATA__');if(nd){try{var sr=function(o,d){if(!o||typeof o!=='object'||d>8)return null;var ks=['price','salesPrice','currentPrice','salePrice','sellingPrice'];for(var i=0;i<ks.length;i++){var v=o[ks[i]];if(v>0&&v<1000000)return v;}var vs=Object.values(o);for(var i=0;i<vs.length;i++){var f=sr(vs[i],d+1);if(f)return f;}return null;};p=sr(JSON.parse(nd.textContent),0);}catch(e){}}}if(p!=null){var s=String(p).replace(/[^0-9.,]/g,'');if(/^\\d{1,3}(\\.\\d{3})+(,\\d*)?$/.test(s))s=s.replace(/\\./g,'').replace(',','.');else s=s.replace(',','.');p=Math.round(parseFloat(s))||null;}var h=location.hostname.replace(/^www\\./,'').split('.')[0];var st=h.charAt(0).toUpperCase()+h.slice(1);var u=new URLSearchParams();if(t)u.set('item',t);if(st)u.set('store',st);if(p)u.set('price',p);window.open('${appUrl}?'+u.toString(),'_blank');})();`;
 
-function searchForPrice(obj, depth = 0) {
-    if (depth > 10 || !obj || typeof obj !== 'object') return null;
-    const keys = ['price', 'salesPrice', 'currentPrice', 'salePrice', 'sellingPrice', 'discountedPrice', 'amount'];
-    for (const key of keys) {
-        if (obj[key] != null) {
-            const p = typeof obj[key] === 'number'
-                ? Math.round(obj[key])
-                : parseDanishPrice(String(obj[key]));
-            if (p && p > 0 && p < 1_000_000) return p;
-        }
-    }
-    for (const val of Object.values(obj)) {
-        if (val && typeof val === 'object') {
-            const found = searchForPrice(val, depth + 1);
-            if (found) return found;
-        }
-    }
-    return null;
-}
+    document.getElementById('bookmarklet-link').href = 'javascript:' + code;
 
-async function fetchProduct(url) {
-    const contents = await fetchWithProxy(url);
-    const doc      = new DOMParser().parseFromString(contents, 'text/html');
-
-    // Title: og:title → twitter:title → <title>
-    const title =
-        doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
-        doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
-        doc.title || '';
-
-    let price = null;
-
-    // 1. og/meta price tags
-    const priceMeta =
-        doc.querySelector('meta[property="og:price:amount"]')?.getAttribute('content') ||
-        doc.querySelector('meta[property="product:price:amount"]')?.getAttribute('content') ||
-        doc.querySelector('meta[name="price"]')?.getAttribute('content');
-    if (priceMeta) price = parseDanishPrice(priceMeta);
-
-    // 2. JSON-LD schema.org
-    if (!price) {
-        for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
-            try {
-                let json = JSON.parse(script.textContent);
-                if (Array.isArray(json)) json = json.find(j => j['@type'] === 'Product');
-                if (json?.['@type'] === 'Product' && json.offers) {
-                    const offer = Array.isArray(json.offers) ? json.offers[0] : json.offers;
-                    if (offer?.price != null) { price = Math.round(parseFloat(offer.price)); break; }
-                }
-            } catch {}
-        }
-    }
-
-    // 3. Next.js __NEXT_DATA__ (used by ilva.dk and many other shops)
-    if (!price) {
-        const nextEl = doc.getElementById('__NEXT_DATA__');
-        if (nextEl) {
-            try { price = searchForPrice(JSON.parse(nextEl.textContent)); } catch {}
-        }
-    }
-
-    // 4. Scan inline scripts for price patterns
-    if (!price) {
-        const pricePattern = /"(?:price|salesPrice|currentPrice|salePrice|sellingPrice|discountedPrice)"\s*:\s*([\d.,]+)/i;
-        for (const script of doc.querySelectorAll('script:not([src]):not([type="application/ld+json"])')) {
-            const m = script.textContent.match(pricePattern);
-            if (m) {
-                const p = parseDanishPrice(m[1]);
-                if (p && p > 0 && p < 1_000_000) { price = p; break; }
-            }
-        }
-    }
-
-    const hostname  = new URL(url).hostname.replace(/^www\./, '');
-    const storePart = hostname.split('.')[0];
-    const store     = storePart.charAt(0).toUpperCase() + storePart.slice(1);
-
-    console.log('[fetchProduct]', { title, price, store, htmlLength: contents.length });
-    return { title: title.trim(), price, store };
-}
-
-function setupLinkImport() {
-    const toggleBtn  = document.getElementById('link-toggle');
-    const form       = document.getElementById('link-form');
-    const urlInput   = document.getElementById('link-url');
-    const fetchBtn   = document.getElementById('link-fetch');
-    const statusEl   = document.getElementById('link-status');
-
-    toggleBtn.addEventListener('click', () => {
-        const hidden = form.hidden;
-        form.hidden  = !hidden;
-        toggleBtn.classList.toggle('active', hidden);
-        if (hidden) urlInput.focus();
+    document.getElementById('bookmarklet-copy').addEventListener('click', () => {
+        navigator.clipboard.writeText('javascript:' + code).then(() => {
+            const s = document.getElementById('bookmarklet-status');
+            s.textContent = 'Copied! Create a new bookmark in your browser and paste this as the URL.';
+            setTimeout(() => s.textContent = '', 5000);
+        });
     });
+}
 
-    async function doFetch() {
-        const url = urlInput.value.trim();
-        if (!url) return;
-        statusEl.textContent = 'Fetching…';
-        statusEl.className   = 'link-status';
-        fetchBtn.disabled    = true;
+function readImportParams() {
+    const params = new URLSearchParams(window.location.search);
+    const item  = params.get('item');
+    const store = params.get('store');
+    const price = params.get('price');
+    if (!item && !store && !price) return;
 
-        try {
-            const { title, price, store } = await fetchProduct(url);
+    document.getElementById('shop-item').value  = item  || '';
+    document.getElementById('shop-store').value = store || '';
+    document.getElementById('shop-price').value = price || '';
 
-            document.getElementById('shop-item').value  = title  || '';
-            document.getElementById('shop-store').value = store  || '';
-            document.getElementById('shop-price').value = price != null ? price : '';
+    const notice  = document.getElementById('import-notice');
+    notice.hidden = false;
+    document.getElementById('import-store').textContent = store || 'web';
 
-            urlInput.value       = '';
-            form.hidden          = true;
-            toggleBtn.classList.remove('active');
-            statusEl.textContent = price != null
-                ? `Fetched: ${title || 'unknown'} — ${price} kr`
-                : `Fetched: ${title || 'unknown'} — price not found, enter manually`;
-            document.getElementById('shop-item').focus();
-        } catch (e) {
-            statusEl.textContent = 'Could not fetch — check the URL or try another site';
-            statusEl.className   = 'link-status error';
-            console.error(e);
-        } finally {
-            fetchBtn.disabled = false;
-        }
-    }
-
-    fetchBtn.addEventListener('click', doFetch);
-    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') doFetch(); });
-    urlInput.addEventListener('paste', () => setTimeout(doFetch, 50));
+    history.replaceState({}, '', window.location.pathname);
+    notice.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => document.getElementById('shop-item').focus(), 300);
 }
 
 function setupShopping() {
@@ -492,4 +369,5 @@ function setupShopping() {
 }
 
 setupShopping();
-setupLinkImport();
+setupBookmarklet();
+readImportParams();

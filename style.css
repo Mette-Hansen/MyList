@@ -278,13 +278,54 @@ h1 {
     }
 }
 
-/* ── Link import ── */
+/* ── Bookmarklet import ── */
 
-.link-import {
+.import-notice {
+    background: #f0e8de;
+    border: 1.5px solid #c9b99a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: #5c4a32;
     margin-bottom: 14px;
 }
 
-.link-toggle-btn {
+.bookmarklet-wrap {
+    margin-bottom: 16px;
+}
+
+.bookmarklet-hint {
+    font-size: 0.82rem;
+    color: #b0a090;
+    margin-bottom: 8px;
+}
+
+.bookmarklet-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bookmarklet-btn {
+    display: inline-block;
+    background: #8b6f47;
+    color: white;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: grab;
+    transition: background 0.2s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.bookmarklet-btn:hover {
+    background: #7a6040;
+}
+
+.bookmarklet-copy {
     background: none;
     border: 2px solid #e8ddd4;
     border-radius: 10px;
@@ -296,31 +337,16 @@ h1 {
     transition: border-color 0.2s, background 0.2s;
 }
 
-.link-toggle-btn:hover,
-.link-toggle-btn.active {
+.bookmarklet-copy:hover {
     border-color: #8b6f47;
     background: #f0e8de;
 }
 
-.link-import-form {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.link-import-form .add-input {
-    flex: 1;
-}
-
-.link-status {
+.bookmarklet-status {
     font-size: 0.8rem;
     color: #8b6f47;
     margin-top: 6px;
     min-height: 1em;
-}
-
-.link-status.error {
-    color: #c0504a;
 }
 
 /* ── Shopping Overview ── */
