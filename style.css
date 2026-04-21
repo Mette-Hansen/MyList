@@ -81,9 +81,9 @@ h1 {
 }
 
 .item-checkbox {
-    width: 26px;
-    height: 26px;
-    min-width: 26px;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
     border-radius: 50%;
     border: 2px solid #c9b99a;
     background: none;
@@ -362,6 +362,9 @@ h1 {
 
 .shopping-table .col-item {
     font-weight: 500;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .shopping-table .col-price {
@@ -553,7 +556,8 @@ h1 {
     cursor: pointer;
     user-select: none;
     transition: color 0.2s;
-    padding: 2px 0;
+    padding: 10px 4px;
+    margin: -8px -4px;
 }
 
 .link-toggle-label:has(input:checked) {
