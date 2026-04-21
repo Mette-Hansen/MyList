@@ -328,7 +328,11 @@ function renderShopping(items) {
                                 <input type="text"   class="add-input" id="edit-shop-store" value="${escapeHtml(item.store || '')}" maxlength="100" placeholder="Store">
                                 <input type="number" class="add-input" id="edit-shop-price" value="${item.price ?? ''}" min="0" step="1" placeholder="Price">
                                 <input type="number" class="add-input" id="edit-shop-qty"   value="${item.qty || 1}"   min="1" step="1" placeholder="Qty">
-                                <input type="url"    class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Link (optional)">
+                                <label class="link-toggle-label">
+                                    <input type="checkbox" id="edit-shop-link-toggle" ${item.link ? 'checked' : ''}>
+                                    <span>Add link</span>
+                                </label>
+                                <input type="url" class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." ${item.link ? '' : 'hidden'}>
                                 <div class="shopping-edit-actions">
                                     <button class="edit-save-btn" data-id="${item.id}">Save</button>
                                     <button class="edit-cancel-btn">Cancel</button>
@@ -403,11 +407,13 @@ function setupShopping() {
         const link  = document.getElementById('shop-link').value.trim();
         if (!text) return;
 
-        document.getElementById('shop-item').value  = '';
-        document.getElementById('shop-store').value = '';
-        document.getElementById('shop-price').value = '';
-        document.getElementById('shop-qty').value   = '1';
-        document.getElementById('shop-link').value  = '';
+        document.getElementById('shop-item').value          = '';
+        document.getElementById('shop-store').value         = '';
+        document.getElementById('shop-price').value         = '';
+        document.getElementById('shop-qty').value           = '1';
+        document.getElementById('shop-link').value          = '';
+        document.getElementById('shop-link-toggle').checked = false;
+        document.getElementById('shop-link').hidden         = true;
 
         try {
             await addDoc(col, {
@@ -432,7 +438,23 @@ function setupShopping() {
         });
     });
 
+    document.getElementById('shop-link-toggle').addEventListener('change', e => {
+        const input = document.getElementById('shop-link');
+        input.hidden = !e.target.checked;
+        if (!e.target.checked) input.value = '';
+        else input.focus();
+    });
+
     const wrap = document.getElementById('shopping-table-wrap');
+
+    wrap.addEventListener('change', e => {
+        const toggle = e.target.closest('#edit-shop-link-toggle');
+        if (!toggle) return;
+        const input = document.getElementById('edit-shop-link');
+        input.hidden = !toggle.checked;
+        if (!toggle.checked) input.value = '';
+        else input.focus();
+    });
 
     wrap.addEventListener('keydown', e => {
         if (!editingShoppingId) return;

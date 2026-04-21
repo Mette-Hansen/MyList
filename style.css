@@ -555,6 +555,32 @@ h1 {
 
 /* ── Link field ── */
 
+.link-toggle-label {
+    grid-column: 1 / -1;
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #b0a090;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+    padding: 2px 0;
+}
+
+.link-toggle-label:has(input:checked) {
+    color: #8b6f47;
+}
+
+.link-toggle-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #8b6f47;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
 .shop-link-input,
 .edit-link-input {
     grid-column: 1 / -1;
