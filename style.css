@@ -288,6 +288,17 @@ h1 {
         min-width: 40px;
     }
 
+    .shopping-table .item-edit,
+    .shopping-table .item-delete {
+        padding: 10px 6px;
+        min-height: 44px;
+        min-width: 36px;
+    }
+
+    .col-actions {
+        gap: 0;
+    }
+
     .bookmarklet-wrap {
         display: none;
     }
@@ -549,7 +560,7 @@ h1 {
     color: white;
     border: none;
     border-radius: 10px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -567,7 +578,7 @@ h1 {
     color: #5c4a32;
     border: none;
     border-radius: 10px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     font-size: 1rem;
     cursor: pointer;
     transition: background 0.2s;
@@ -597,7 +608,7 @@ h1 {
 
 .col-actions {
     display: flex;
-    gap: 2px;
+    gap: 4px;
     justify-content: flex-end;
     align-items: center;
 }
