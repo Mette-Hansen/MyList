@@ -46,6 +46,9 @@ const PRIORITY = {
     low:  { cls: 'priority-low',  label: 'Low'  },
 };
 
+let editingTodoId = null;
+let currentTodos  = [];
+
 function renderTodos(items) {
     const listEl  = document.getElementById('todo-list');
     const countEl = document.getElementById('todo-count');
@@ -62,37 +65,65 @@ function renderTodos(items) {
     listEl.innerHTML = '';
     items.forEach(item => {
         const li = document.createElement('li');
-        li.className = 'item';
 
-        const pri = PRIORITY[item.priority];
-        const priorityBadge = pri
-            ? `<span class="todo-priority ${pri.cls}">${pri.label}</span>`
-            : '';
+        if (item.id === editingTodoId) {
+            li.className = 'item item-editing';
+            li.innerHTML = `
+                <div class="edit-form">
+                    <input type="text" class="add-input" id="edit-todo-text" value="${escapeHtml(item.text)}" maxlength="200">
+                    <div class="todo-edit-secondary">
+                        <select class="add-input" id="edit-todo-priority">
+                            <option value="">Priority</option>
+                            <option value="high" ${item.priority === 'high' ? 'selected' : ''}>High</option>
+                            <option value="mid" ${item.priority === 'mid' ? 'selected' : ''}>Mid</option>
+                            <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
+                        </select>
+                        <input type="date" class="add-input" id="edit-todo-deadline" value="${item.deadline || ''}">
+                        <label class="todo-needs-help-label">
+                            <input type="checkbox" id="edit-todo-needs-help" ${item.needsHelp ? 'checked' : ''}>
+                            <span>Needs help</span>
+                        </label>
+                    </div>
+                    <div class="edit-actions">
+                        <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                        <button class="edit-cancel-btn">Cancel</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            li.className = 'item';
 
-        const metaParts = [];
-        if (item.deadline) {
-            const d    = new Date(item.deadline + 'T00:00:00');
-            const opts = d.getFullYear() === new Date().getFullYear()
-                ? { month: 'short', day: 'numeric' }
-                : { month: 'short', day: 'numeric', year: 'numeric' };
-            metaParts.push(`<span>📅 ${d.toLocaleDateString('en-GB', opts)}</span>`);
+            const pri = PRIORITY[item.priority];
+            const priorityBadge = pri
+                ? `<span class="todo-priority ${pri.cls}">${pri.label}</span>`
+                : '';
+
+            const metaParts = [];
+            if (item.deadline) {
+                const d    = new Date(item.deadline + 'T00:00:00');
+                const opts = d.getFullYear() === new Date().getFullYear()
+                    ? { month: 'short', day: 'numeric' }
+                    : { month: 'short', day: 'numeric', year: 'numeric' };
+                metaParts.push(`<span>📅 ${d.toLocaleDateString('en-GB', opts)}</span>`);
+            }
+            if (item.needsHelp) {
+                metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
+            }
+            const metaHtml = metaParts.length
+                ? `<div class="todo-meta">${metaParts.join('')}</div>`
+                : '';
+
+            li.innerHTML = `
+                <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
+                <div class="todo-content">
+                    <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                    ${metaHtml}
+                </div>
+                ${priorityBadge}
+                <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+            `;
         }
-        if (item.needsHelp) {
-            metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
-        }
-        const metaHtml = metaParts.length
-            ? `<div class="todo-meta">${metaParts.join('')}</div>`
-            : '';
-
-        li.innerHTML = `
-            <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
-            <div class="todo-content">
-                <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
-                ${metaHtml}
-            </div>
-            ${priorityBadge}
-            <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
-        `;
         listEl.appendChild(li);
     });
 }
@@ -103,8 +134,8 @@ function setupTodos() {
     const q      = query(col, orderBy('createdAt', 'asc'));
 
     onSnapshot(q, snapshot => {
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderTodos(items);
+        currentTodos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!editingTodoId) renderTodos(currentTodos);
         setStatus('Synced ✓');
     }, err => {
         setStatus('Could not connect — check your Firebase config', true);
@@ -143,9 +174,57 @@ function setupTodos() {
         if (e.key === 'Enter') addItem();
     });
 
+    listEl.addEventListener('keydown', e => {
+        if (!editingTodoId) return;
+        if (e.key === 'Enter' && e.target.tagName !== 'SELECT') {
+            e.preventDefault();
+            listEl.querySelector('.edit-save-btn')?.click();
+        }
+        if (e.key === 'Escape') {
+            editingTodoId = null;
+            renderTodos(currentTodos);
+        }
+    });
+
     listEl.addEventListener('click', async e => {
+        const editBtn   = e.target.closest('.item-edit');
+        const saveBtn   = e.target.closest('.edit-save-btn');
+        const cancelBtn = e.target.closest('.edit-cancel-btn');
         const checkbox  = e.target.closest('.item-checkbox');
         const deleteBtn = e.target.closest('.item-delete');
+
+        if (editBtn) {
+            editingTodoId = editBtn.dataset.id;
+            renderTodos(currentTodos);
+            setTimeout(() => document.getElementById('edit-todo-text')?.focus(), 50);
+            return;
+        }
+
+        if (saveBtn) {
+            const text      = document.getElementById('edit-todo-text').value.trim();
+            const priority  = document.getElementById('edit-todo-priority').value;
+            const deadline  = document.getElementById('edit-todo-deadline').value;
+            const needsHelp = document.getElementById('edit-todo-needs-help').checked;
+            if (!text) return;
+            try {
+                await updateDoc(doc(db, 'todos', saveBtn.dataset.id), {
+                    text,
+                    priority:  priority  || null,
+                    deadline:  deadline  || null,
+                    needsHelp: needsHelp,
+                });
+                editingTodoId = null;
+            } catch (err) {
+                setStatus('Failed to update item', true);
+            }
+            return;
+        }
+
+        if (cancelBtn) {
+            editingTodoId = null;
+            renderTodos(currentTodos);
+            return;
+        }
 
         if (checkbox) {
             const isChecked = checkbox.classList.contains('checked');
@@ -169,6 +248,9 @@ function setupTodos() {
 setupTodos();
 
 // ── Shopping Overview ────────────────────────────────────────────────
+
+let editingShoppingId = null;
+let currentShopping   = [];
 
 function formatPrice(price) {
     if (price == null || price === '') return '—';
@@ -222,15 +304,37 @@ function renderShopping(items) {
                 storeTotal += lineTotal;
                 grandTotal += lineTotal;
             }
-            const done = item.completed ? 'row-completed' : '';
-            bodyRows += `
-                <tr class="${done}">
-                    <td><div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div></td>
-                    <td class="col-item">${escapeHtml(item.text || '')}</td>
-                    <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
-                    <td class="col-qty">× ${qty}</td>
-                    <td><button class="item-delete" data-id="${item.id}" title="Delete">×</button></td>
-                </tr>`;
+
+            if (item.id === editingShoppingId) {
+                bodyRows += `
+                    <tr class="row-editing">
+                        <td colspan="5">
+                            <div class="shopping-edit-form">
+                                <input type="text"   class="add-input" id="edit-shop-item"  value="${escapeHtml(item.text  || '')}" maxlength="100" placeholder="Item">
+                                <input type="text"   class="add-input" id="edit-shop-store" value="${escapeHtml(item.store || '')}" maxlength="100" placeholder="Store">
+                                <input type="number" class="add-input" id="edit-shop-price" value="${item.price ?? ''}" min="0" step="1" placeholder="Price">
+                                <input type="number" class="add-input" id="edit-shop-qty"   value="${item.qty || 1}"   min="1" step="1" placeholder="Qty">
+                                <div class="shopping-edit-actions">
+                                    <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                                    <button class="edit-cancel-btn">Cancel</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+            } else {
+                const done = item.completed ? 'row-completed' : '';
+                bodyRows += `
+                    <tr class="${done}">
+                        <td><div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div></td>
+                        <td class="col-item">${escapeHtml(item.text || '')}</td>
+                        <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
+                        <td class="col-qty">× ${qty}</td>
+                        <td class="col-actions">
+                            <button class="item-edit"   data-id="${item.id}" title="Edit">✎</button>
+                            <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+                        </td>
+                    </tr>`;
+            }
         });
 
         bodyRows += `
@@ -248,7 +352,7 @@ function renderShopping(items) {
                     <th>Item</th>
                     <th>Price</th>
                     <th>Qty</th>
-                    <th style="width:36px"></th>
+                    <th style="width:68px"></th>
                 </tr>
             </thead>
             <tbody>${bodyRows}</tbody>
@@ -286,8 +390,8 @@ function setupShopping() {
     const q   = query(col, orderBy('createdAt', 'asc'));
 
     onSnapshot(q, snapshot => {
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderShopping(items);
+        currentShopping = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!editingShoppingId) renderShopping(currentShopping);
         setStatus('Synced ✓');
     }, err => {
         setStatus('Could not connect — check your Firebase config', true);
@@ -328,9 +432,59 @@ function setupShopping() {
         });
     });
 
-    document.getElementById('shopping-table-wrap').addEventListener('click', async e => {
+    const wrap = document.getElementById('shopping-table-wrap');
+
+    wrap.addEventListener('keydown', e => {
+        if (!editingShoppingId) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            wrap.querySelector('.edit-save-btn')?.click();
+        }
+        if (e.key === 'Escape') {
+            editingShoppingId = null;
+            renderShopping(currentShopping);
+        }
+    });
+
+    wrap.addEventListener('click', async e => {
+        const editBtn   = e.target.closest('.item-edit');
+        const saveBtn   = e.target.closest('.edit-save-btn');
+        const cancelBtn = e.target.closest('.edit-cancel-btn');
         const checkbox  = e.target.closest('.item-checkbox');
         const deleteBtn = e.target.closest('.item-delete');
+
+        if (editBtn) {
+            editingShoppingId = editBtn.dataset.id;
+            renderShopping(currentShopping);
+            setTimeout(() => document.getElementById('edit-shop-item')?.focus(), 50);
+            return;
+        }
+
+        if (saveBtn) {
+            const text  = document.getElementById('edit-shop-item').value.trim();
+            const store = document.getElementById('edit-shop-store').value.trim();
+            const price = document.getElementById('edit-shop-price').value;
+            const qty   = document.getElementById('edit-shop-qty').value || '1';
+            if (!text) return;
+            try {
+                await updateDoc(doc(db, 'shopping', saveBtn.dataset.id), {
+                    text,
+                    store: store || '',
+                    price: price !== '' ? Math.round(parseFloat(price)) : null,
+                    qty:   parseInt(qty) || 1,
+                });
+                editingShoppingId = null;
+            } catch (err) {
+                setStatus('Failed to update item', true);
+            }
+            return;
+        }
+
+        if (cancelBtn) {
+            editingShoppingId = null;
+            renderShopping(currentShopping);
+            return;
+        }
 
         if (checkbox) {
             const isChecked = checkbox.classList.contains('checked');
