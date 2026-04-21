@@ -332,7 +332,7 @@ function renderShopping(items) {
                                     <input type="checkbox" id="edit-shop-link-toggle" ${item.link ? 'checked' : ''}>
                                     <span>Add link</span>
                                 </label>
-                                <input type="url" class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." ${item.link ? '' : 'hidden'}>
+                                <input type="url" class="add-input edit-link-input${item.link ? ' link-visible' : ''}" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link...">
                                 <div class="shopping-edit-actions">
                                     <button class="edit-save-btn" data-id="${item.id}">Save</button>
                                     <button class="edit-cancel-btn">Cancel</button>
@@ -413,7 +413,7 @@ function setupShopping() {
         document.getElementById('shop-qty').value           = '1';
         document.getElementById('shop-link').value          = '';
         document.getElementById('shop-link-toggle').checked = false;
-        document.getElementById('shop-link').hidden         = true;
+        document.getElementById('shop-link').classList.remove('link-visible');
 
         try {
             await addDoc(col, {
@@ -440,7 +440,7 @@ function setupShopping() {
 
     document.getElementById('shop-link-toggle').addEventListener('change', e => {
         const input = document.getElementById('shop-link');
-        input.hidden = !e.target.checked;
+        input.classList.toggle('link-visible', e.target.checked);
         if (!e.target.checked) input.value = '';
         else input.focus();
     });
@@ -451,7 +451,7 @@ function setupShopping() {
         const toggle = e.target.closest('#edit-shop-link-toggle');
         if (!toggle) return;
         const input = document.getElementById('edit-shop-link');
-        input.hidden = !toggle.checked;
+        input.classList.toggle('link-visible', toggle.checked);
         if (!toggle.checked) input.value = '';
         else input.focus();
     });
