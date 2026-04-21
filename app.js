@@ -92,7 +92,6 @@ function renderTodos(items) {
                             <option value="mid" ${item.priority === 'mid' ? 'selected' : ''}>Mid</option>
                             <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
                         </select>
-                        <input type="date" class="add-input" id="edit-todo-deadline" value="${item.deadline || ''}">
                         <label class="todo-needs-help-label">
                             <input type="checkbox" id="edit-todo-needs-help" ${item.needsHelp ? 'checked' : ''}>
                             <span>Needs help</span>
@@ -113,13 +112,6 @@ function renderTodos(items) {
                 : '';
 
             const metaParts = [];
-            if (item.deadline) {
-                const d    = new Date(item.deadline + 'T00:00:00');
-                const opts = d.getFullYear() === new Date().getFullYear()
-                    ? { month: 'short', day: 'numeric' }
-                    : { month: 'short', day: 'numeric', year: 'numeric' };
-                metaParts.push(`<span>📅 ${d.toLocaleDateString('en-GB', opts)}</span>`);
-            }
             if (item.needsHelp) {
                 metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
             }
@@ -159,20 +151,17 @@ function setupTodos() {
     async function addItem() {
         const text      = document.getElementById('todo-input').value.trim();
         const priority  = document.getElementById('todo-priority').value;
-        const deadline  = document.getElementById('todo-deadline').value;
         const needsHelp = document.getElementById('todo-needs-help').checked;
         if (!text) return;
 
         document.getElementById('todo-input').value        = '';
         document.getElementById('todo-priority').value     = '';
-        document.getElementById('todo-deadline').value     = '';
         document.getElementById('todo-needs-help').checked = false;
 
         try {
             await addDoc(col, {
                 text,
                 priority:  priority  || null,
-                deadline:  deadline  || null,
                 needsHelp: needsHelp,
                 completed: false,
                 createdAt: serverTimestamp()
@@ -217,14 +206,12 @@ function setupTodos() {
         if (saveBtn) {
             const text      = document.getElementById('edit-todo-text').value.trim();
             const priority  = document.getElementById('edit-todo-priority').value;
-            const deadline  = document.getElementById('edit-todo-deadline').value;
             const needsHelp = document.getElementById('edit-todo-needs-help').checked;
             if (!text) return;
             try {
                 await updateDoc(doc(db, 'todos', saveBtn.dataset.id), {
                     text,
                     priority:  priority  || null,
-                    deadline:  deadline  || null,
                     needsHelp: needsHelp,
                 });
                 editingTodoId = null;

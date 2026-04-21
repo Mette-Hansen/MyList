@@ -232,12 +232,9 @@ h1 {
 
 .todo-add-form {
     display: grid;
-    grid-template-columns: 1fr 1.5fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     gap: 8px;
-}
-
-.todo-text-input {
-    grid-column: 1 / -1;
+    align-items: center;
 }
 
 .todo-needs-help-label {
@@ -270,15 +267,11 @@ h1 {
 
 @media (max-width: 560px) {
     .todo-add-form {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr auto auto;
     }
 
-    .todo-needs-help-label {
-        grid-column: span 1;
-    }
-
-    .todo-add-form .add-btn {
-        grid-column: span 1;
+    .todo-text-input {
+        grid-column: 1 / -1;
     }
 
     .items-list .item-edit,
@@ -313,14 +306,6 @@ h1 {
 
     .shopping-table tr.store-subtotal td {
         padding: 4px 4px 10px;
-    }
-
-    .todo-edit-secondary {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .todo-edit-secondary .todo-needs-help-label {
-        grid-column: span 2;
     }
 
     .shopping-edit-form {
@@ -484,7 +469,7 @@ h1 {
 
 .todo-edit-secondary {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr auto;
     gap: 8px;
 }
 
