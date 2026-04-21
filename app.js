@@ -38,6 +38,20 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
+function normalizeUrl(val) {
+    if (!val) return null;
+    if (/^https?:\/\//i.test(val)) return val;
+    return 'https://' + val;
+}
+
+function safeUrl(url) {
+    if (!url) return null;
+    try {
+        const u = new URL(url);
+        return (u.protocol === 'http:' || u.protocol === 'https:') ? url : null;
+    } catch { return null; }
+}
+
 // ── To Do ────────────────────────────────────────────────────────────
 
 const PRIORITY = {
@@ -314,6 +328,7 @@ function renderShopping(items) {
                                 <input type="text"   class="add-input" id="edit-shop-store" value="${escapeHtml(item.store || '')}" maxlength="100" placeholder="Store">
                                 <input type="number" class="add-input" id="edit-shop-price" value="${item.price ?? ''}" min="0" step="1" placeholder="Price">
                                 <input type="number" class="add-input" id="edit-shop-qty"   value="${item.qty || 1}"   min="1" step="1" placeholder="Qty">
+                                <input type="url"    class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Link (optional)">
                                 <div class="shopping-edit-actions">
                                     <button class="edit-save-btn" data-id="${item.id}">Save</button>
                                     <button class="edit-cancel-btn">Cancel</button>
@@ -323,10 +338,14 @@ function renderShopping(items) {
                     </tr>`;
             } else {
                 const done = item.completed ? 'row-completed' : '';
+                const href = safeUrl(item.link);
+                const itemLabel = href
+                    ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text || '')}</a>`
+                    : escapeHtml(item.text || '');
                 bodyRows += `
                     <tr class="${done}">
                         <td><div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div></td>
-                        <td class="col-item">${escapeHtml(item.text || '')}</td>
+                        <td class="col-item">${itemLabel}</td>
                         <td class="col-price">${lineTotal != null ? formatPrice(lineTotal) : '—'}</td>
                         <td class="col-qty">× ${qty}</td>
                         <td class="col-actions">
@@ -363,28 +382,6 @@ function renderShopping(items) {
         </div>`;
 }
 
-// ── Bookmarklet import ───────────────────────────────────────────────
-
-function readImportParams() {
-    const params = new URLSearchParams(window.location.search);
-    const item  = params.get('item');
-    const store = params.get('store');
-    const price = params.get('price');
-    if (!item && !store && !price) return;
-
-    document.getElementById('shop-item').value  = item  || '';
-    document.getElementById('shop-store').value = store || '';
-    document.getElementById('shop-price').value = price || '';
-
-    const notice  = document.getElementById('import-notice');
-    notice.hidden = false;
-    document.getElementById('import-store').textContent = store || 'web';
-
-    history.replaceState({}, '', window.location.pathname);
-    notice.scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => document.getElementById('shop-item').focus(), 300);
-}
-
 function setupShopping() {
     const col = collection(db, 'shopping');
     const q   = query(col, orderBy('createdAt', 'asc'));
@@ -403,12 +400,14 @@ function setupShopping() {
         const store = document.getElementById('shop-store').value.trim();
         const price = document.getElementById('shop-price').value;
         const qty   = document.getElementById('shop-qty').value || '1';
+        const link  = document.getElementById('shop-link').value.trim();
         if (!text) return;
 
         document.getElementById('shop-item').value  = '';
         document.getElementById('shop-store').value = '';
         document.getElementById('shop-price').value = '';
         document.getElementById('shop-qty').value   = '1';
+        document.getElementById('shop-link').value  = '';
 
         try {
             await addDoc(col, {
@@ -416,6 +415,7 @@ function setupShopping() {
                 store: store || '',
                 price: price !== '' ? Math.round(parseFloat(price)) : null,
                 qty:   parseInt(qty) || 1,
+                link:  normalizeUrl(link),
                 completed: false,
                 createdAt: serverTimestamp()
             });
@@ -426,7 +426,7 @@ function setupShopping() {
     }
 
     document.getElementById('shopping-add').addEventListener('click', addItem);
-    ['shop-item', 'shop-store', 'shop-price', 'shop-qty'].forEach(id => {
+    ['shop-item', 'shop-store', 'shop-price', 'shop-qty', 'shop-link'].forEach(id => {
         document.getElementById(id).addEventListener('keydown', e => {
             if (e.key === 'Enter') addItem();
         });
@@ -465,6 +465,7 @@ function setupShopping() {
             const store = document.getElementById('edit-shop-store').value.trim();
             const price = document.getElementById('edit-shop-price').value;
             const qty   = document.getElementById('edit-shop-qty').value || '1';
+            const link  = document.getElementById('edit-shop-link').value.trim();
             if (!text) return;
             try {
                 await updateDoc(doc(db, 'shopping', saveBtn.dataset.id), {
@@ -472,6 +473,7 @@ function setupShopping() {
                     store: store || '',
                     price: price !== '' ? Math.round(parseFloat(price)) : null,
                     qty:   parseInt(qty) || 1,
+                    link:  normalizeUrl(link),
                 });
                 editingShoppingId = null;
             } catch (err) {
@@ -506,4 +508,3 @@ function setupShopping() {
 }
 
 setupShopping();
-readImportParams();
