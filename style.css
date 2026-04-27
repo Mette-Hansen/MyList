@@ -185,6 +185,34 @@ h1 {
     font-style: italic;
 }
 
+/* ── Grocery add form ── */
+
+.grocery-add-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.grocery-add-form .add-input {
+    min-width: 0;
+}
+
+/* ── Category headers (grocery list) ── */
+
+.category-header {
+    list-style: none;
+    background: #f8f4f0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #8b6f47;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 5px 8px;
+    margin: 6px -8px 0;
+    border-radius: 6px;
+}
+
 .status-bar {
     text-align: center;
     font-size: 0.75rem;
@@ -268,6 +296,14 @@ h1 {
 }
 
 @media (max-width: 560px) {
+    .grocery-add-form {
+        grid-template-columns: 1fr auto;
+    }
+
+    .grocery-text-input {
+        grid-column: 1 / -1;
+    }
+
     .todo-add-form {
         grid-template-columns: 1fr auto auto;
     }

@@ -55,6 +55,7 @@ function safeUrl(url) {
 // ── Grocery List ─────────────────────────────────────────────────────
 
 let currentGroceries = [];
+let editingGroceryId = null;
 
 function renderGroceries(items) {
     const listEl  = document.getElementById('grocery-list');
@@ -69,16 +70,54 @@ function renderGroceries(items) {
     const remaining = items.filter(i => !i.completed).length;
     countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
-    listEl.innerHTML = '';
+    const toTitleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
+    const groupMap = new Map();
     items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'item';
-        li.innerHTML = `
-            <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
-            <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
-            <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
-        `;
-        listEl.appendChild(li);
+        const key = item.category?.trim().toLowerCase() || '';
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key).push(item);
+    });
+
+    const sortedKeys = [...groupMap.keys()]
+        .filter(k => k !== '')
+        .sort((a, b) => a.localeCompare(b));
+    if (groupMap.has('')) sortedKeys.push('');
+
+    listEl.innerHTML = '';
+    sortedKeys.forEach(key => {
+        if (key !== '') {
+            const header = document.createElement('li');
+            header.className = 'category-header';
+            header.textContent = toTitleCase(key);
+            listEl.appendChild(header);
+        }
+
+        groupMap.get(key).forEach(item => {
+            const li = document.createElement('li');
+
+            if (item.id === editingGroceryId) {
+                li.className = 'item item-editing';
+                li.innerHTML = `
+                    <div class="edit-form">
+                        <input type="text" class="add-input" id="edit-grocery-text" value="${escapeHtml(item.text)}" maxlength="200">
+                        <input type="text" class="add-input" id="edit-grocery-category" value="${escapeHtml(item.category || '')}" placeholder="Category" maxlength="100">
+                        <div class="edit-actions">
+                            <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                            <button class="edit-cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                li.className = 'item';
+                li.innerHTML = `
+                    <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
+                    <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                    <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                    <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+                `;
+            }
+            listEl.appendChild(li);
+        });
     });
 }
 
@@ -89,7 +128,7 @@ function setupGroceries() {
 
     onSnapshot(q, snapshot => {
         currentGroceries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderGroceries(currentGroceries);
+        if (!editingGroceryId) renderGroceries(currentGroceries);
         setStatus('Synced ✓');
     }, err => {
         setStatus('Could not connect — check your Firebase config', true);
@@ -97,11 +136,13 @@ function setupGroceries() {
     });
 
     async function addItem() {
-        const text = document.getElementById('grocery-input').value.trim();
+        const text     = document.getElementById('grocery-input').value.trim();
+        const category = document.getElementById('grocery-category').value.trim();
         if (!text) return;
-        document.getElementById('grocery-input').value = '';
+        document.getElementById('grocery-input').value    = '';
+        document.getElementById('grocery-category').value = '';
         try {
-            await addDoc(col, { text, completed: false, createdAt: serverTimestamp() });
+            await addDoc(col, { text, category: category || '', completed: false, createdAt: serverTimestamp() });
         } catch (e) {
             setStatus('Failed to save item', true);
             console.error(e);
@@ -109,13 +150,57 @@ function setupGroceries() {
     }
 
     document.getElementById('grocery-add').addEventListener('click', addItem);
-    document.getElementById('grocery-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addItem();
+    ['grocery-input', 'grocery-category'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+            if (e.key === 'Enter') addItem();
+        });
+    });
+
+    listEl.addEventListener('keydown', e => {
+        if (!editingGroceryId) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            listEl.querySelector('.edit-save-btn')?.click();
+        }
+        if (e.key === 'Escape') {
+            editingGroceryId = null;
+            renderGroceries(currentGroceries);
+        }
     });
 
     listEl.addEventListener('click', async e => {
+        const editBtn   = e.target.closest('.item-edit');
+        const saveBtn   = e.target.closest('.edit-save-btn');
+        const cancelBtn = e.target.closest('.edit-cancel-btn');
         const checkbox  = e.target.closest('.item-checkbox');
         const deleteBtn = e.target.closest('.item-delete');
+
+        if (editBtn) {
+            editingGroceryId = editBtn.dataset.id;
+            renderGroceries(currentGroceries);
+            setTimeout(() => document.getElementById('edit-grocery-text')?.focus(), 50);
+            return;
+        }
+
+        if (saveBtn) {
+            const text     = document.getElementById('edit-grocery-text').value.trim();
+            const category = document.getElementById('edit-grocery-category').value.trim();
+            if (!text) return;
+            try {
+                await updateDoc(doc(db, 'groceries', saveBtn.dataset.id), { text, category: category || '' });
+                editingGroceryId = null;
+                renderGroceries(currentGroceries);
+            } catch (err) {
+                setStatus('Failed to update item', true);
+            }
+            return;
+        }
+
+        if (cancelBtn) {
+            editingGroceryId = null;
+            renderGroceries(currentGroceries);
+            return;
+        }
 
         if (checkbox) {
             const isChecked = checkbox.classList.contains('checked');
