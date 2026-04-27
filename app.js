@@ -54,6 +54,27 @@ function safeUrl(url) {
 
 // ── Grocery List ─────────────────────────────────────────────────────
 
+const GROCERY_CATEGORIES = [
+    { value: 'fruit & veg',    label: 'Fruit & Veg'    },
+    { value: 'meat & fish',    label: 'Meat & Fish'    },
+    { value: 'dairy & eggs',   label: 'Dairy & Eggs'   },
+    { value: 'bread & bakery', label: 'Bread & Bakery' },
+    { value: 'frozen',         label: 'Frozen'         },
+    { value: 'drinks',         label: 'Drinks'         },
+    { value: 'snacks',         label: 'Snacks'         },
+    { value: 'pantry',         label: 'Pantry'         },
+    { value: 'cleaning',       label: 'Cleaning'       },
+    { value: 'personal care',  label: 'Personal Care'  },
+    { value: 'other',          label: 'Other'          },
+];
+
+function groceryCategoryOptions(selected = '') {
+    return '<option value="">Category</option>' +
+        GROCERY_CATEGORIES.map(c =>
+            `<option value="${c.value}"${selected === c.value ? ' selected' : ''}>${c.label}</option>`
+        ).join('');
+}
+
 let currentGroceries = [];
 let editingGroceryId = null;
 
@@ -70,7 +91,6 @@ function renderGroceries(items) {
     const remaining = items.filter(i => !i.completed).length;
     countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
-    const toTitleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
     const groupMap = new Map();
     items.forEach(item => {
         const key = item.category?.trim().toLowerCase() || '';
@@ -78,9 +98,16 @@ function renderGroceries(items) {
         groupMap.get(key).push(item);
     });
 
+    const catOrder = GROCERY_CATEGORIES.map(c => c.value);
     const sortedKeys = [...groupMap.keys()]
         .filter(k => k !== '')
-        .sort((a, b) => a.localeCompare(b));
+        .sort((a, b) => {
+            const ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;
+            if (ib !== -1) return 1;
+            return a.localeCompare(b);
+        });
     if (groupMap.has('')) sortedKeys.push('');
 
     listEl.innerHTML = '';
@@ -88,7 +115,8 @@ function renderGroceries(items) {
         if (key !== '') {
             const header = document.createElement('li');
             header.className = 'category-header';
-            header.textContent = toTitleCase(key);
+            header.textContent = GROCERY_CATEGORIES.find(c => c.value === key)?.label
+                || key.replace(/\b\w/g, c => c.toUpperCase());
             listEl.appendChild(header);
         }
 
@@ -100,7 +128,7 @@ function renderGroceries(items) {
                 li.innerHTML = `
                     <div class="edit-form">
                         <input type="text" class="add-input" id="edit-grocery-text" value="${escapeHtml(item.text)}" maxlength="200">
-                        <input type="text" class="add-input" id="edit-grocery-category" value="${escapeHtml(item.category || '')}" placeholder="Category" maxlength="100">
+                        <select class="add-input" id="edit-grocery-category">${groceryCategoryOptions(item.category || '')}</select>
                         <div class="edit-actions">
                             <button class="edit-save-btn" data-id="${item.id}">Save</button>
                             <button class="edit-cancel-btn">Cancel</button>
@@ -126,6 +154,8 @@ function setupGroceries() {
     const col    = collection(db, 'groceries');
     const q      = query(col, orderBy('createdAt', 'asc'));
 
+    document.getElementById('grocery-category').innerHTML = groceryCategoryOptions();
+
     onSnapshot(q, snapshot => {
         currentGroceries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         if (!editingGroceryId) renderGroceries(currentGroceries);
@@ -137,12 +167,12 @@ function setupGroceries() {
 
     async function addItem() {
         const text     = document.getElementById('grocery-input').value.trim();
-        const category = document.getElementById('grocery-category').value.trim();
+        const category = document.getElementById('grocery-category').value;
         if (!text) return;
         document.getElementById('grocery-input').value    = '';
         document.getElementById('grocery-category').value = '';
         try {
-            await addDoc(col, { text, category: category || '', completed: false, createdAt: serverTimestamp() });
+            await addDoc(col, { text, category, completed: false, createdAt: serverTimestamp() });
         } catch (e) {
             setStatus('Failed to save item', true);
             console.error(e);
@@ -150,10 +180,8 @@ function setupGroceries() {
     }
 
     document.getElementById('grocery-add').addEventListener('click', addItem);
-    ['grocery-input', 'grocery-category'].forEach(id => {
-        document.getElementById(id).addEventListener('keydown', e => {
-            if (e.key === 'Enter') addItem();
-        });
+    document.getElementById('grocery-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addItem();
     });
 
     listEl.addEventListener('keydown', e => {
@@ -184,10 +212,10 @@ function setupGroceries() {
 
         if (saveBtn) {
             const text     = document.getElementById('edit-grocery-text').value.trim();
-            const category = document.getElementById('edit-grocery-category').value.trim();
+            const category = document.getElementById('edit-grocery-category').value;
             if (!text) return;
             try {
-                await updateDoc(doc(db, 'groceries', saveBtn.dataset.id), { text, category: category || '' });
+                await updateDoc(doc(db, 'groceries', saveBtn.dataset.id), { text, category });
                 editingGroceryId = null;
                 renderGroceries(currentGroceries);
             } catch (err) {
