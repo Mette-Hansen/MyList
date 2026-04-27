@@ -433,6 +433,11 @@ h1 {
         grid-template-columns: 1fr 1fr;
     }
 
+    .shopping-add-form #shop-item,
+    .shopping-add-form #shop-store {
+        grid-column: 1 / -1;
+    }
+
     .shopping-add-form .add-btn {
         grid-column: span 2;
     }
