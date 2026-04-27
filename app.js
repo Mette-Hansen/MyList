@@ -215,6 +215,7 @@ function setupTodos() {
                     needsHelp: needsHelp,
                 });
                 editingTodoId = null;
+                renderTodos(currentTodos);
             } catch (err) {
                 setStatus('Failed to update item', true);
             }
@@ -485,6 +486,7 @@ function setupShopping() {
                     link:  normalizeUrl(link),
                 });
                 editingShoppingId = null;
+                renderShopping(currentShopping);
             } catch (err) {
                 setStatus('Failed to update item', true);
             }
