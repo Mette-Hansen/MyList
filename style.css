@@ -317,6 +317,10 @@ h1 {
 
 /* ── Shopping Overview ── */
 
+#shopping-table-wrap {
+    overflow-x: auto;
+}
+
 .shopping-table {
     width: 100%;
     border-collapse: collapse;
@@ -428,6 +432,10 @@ h1 {
     align-items: center;
 }
 
+.shopping-add-form .add-input {
+    min-width: 0;
+}
+
 @media (max-width: 560px) {
     .shopping-add-form {
         grid-template-columns: 1fr 1fr;
@@ -535,6 +543,10 @@ h1 {
     display: grid;
     grid-template-columns: 2fr 2fr 1fr 1fr;
     gap: 8px;
+}
+
+.shopping-edit-form .add-input {
+    min-width: 0;
 }
 
 .shopping-edit-actions {
