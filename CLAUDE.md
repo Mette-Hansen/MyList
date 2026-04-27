@@ -9,11 +9,12 @@
 ## Firestore collections
 | Collection | Fields |
 |---|---|
+| `groceries` | `text`, `completed` (bool), `createdAt` (serverTimestamp) |
 | `todos` | `text`, `priority` (high/mid/low/null), `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
 | `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern
-- `currentTodos` / `currentShopping` hold the latest snapshot arrays
+- `currentGroceries` / `currentTodos` / `currentShopping` hold the latest snapshot arrays
 - `editingTodoId` / `editingShoppingId` hold the id of the item currently open for inline editing (null otherwise)
 - `onSnapshot` callbacks skip re-render while an item is being edited, to avoid wiping the form mid-edit
 - All HTML output goes through `escapeHtml()` — never skip this

@@ -52,6 +52,92 @@ function safeUrl(url) {
     } catch { return null; }
 }
 
+// ── Grocery List ─────────────────────────────────────────────────────
+
+let currentGroceries = [];
+
+function renderGroceries(items) {
+    const listEl  = document.getElementById('grocery-list');
+    const countEl = document.getElementById('grocery-count');
+
+    if (items.length === 0) {
+        listEl.innerHTML = '<li class="empty-state">No items yet — add one below!</li>';
+        countEl.textContent = '—';
+        return;
+    }
+
+    const remaining = items.filter(i => !i.completed).length;
+    countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
+
+    listEl.innerHTML = '';
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `
+            <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
+            <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+            <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+        `;
+        listEl.appendChild(li);
+    });
+}
+
+function setupGroceries() {
+    const listEl = document.getElementById('grocery-list');
+    const col    = collection(db, 'groceries');
+    const q      = query(col, orderBy('createdAt', 'asc'));
+
+    onSnapshot(q, snapshot => {
+        currentGroceries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderGroceries(currentGroceries);
+        setStatus('Synced ✓');
+    }, err => {
+        setStatus('Could not connect — check your Firebase config', true);
+        console.error(err);
+    });
+
+    async function addItem() {
+        const text = document.getElementById('grocery-input').value.trim();
+        if (!text) return;
+        document.getElementById('grocery-input').value = '';
+        try {
+            await addDoc(col, { text, completed: false, createdAt: serverTimestamp() });
+        } catch (e) {
+            setStatus('Failed to save item', true);
+            console.error(e);
+        }
+    }
+
+    document.getElementById('grocery-add').addEventListener('click', addItem);
+    document.getElementById('grocery-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addItem();
+    });
+
+    listEl.addEventListener('click', async e => {
+        const checkbox  = e.target.closest('.item-checkbox');
+        const deleteBtn = e.target.closest('.item-delete');
+
+        if (checkbox) {
+            const isChecked = checkbox.classList.contains('checked');
+            try {
+                await updateDoc(doc(db, 'groceries', checkbox.dataset.id), { completed: !isChecked });
+            } catch (err) {
+                setStatus('Failed to update item', true);
+            }
+        }
+
+        if (deleteBtn) {
+            try {
+                await deleteDoc(doc(db, 'groceries', deleteBtn.dataset.id));
+            } catch (err) {
+                setStatus('Failed to delete item', true);
+            }
+        }
+    });
+}
+
+setupGroceries();
+
 // ── To Do ────────────────────────────────────────────────────────────
 
 const PRIORITY = {
