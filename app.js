@@ -448,6 +448,198 @@ function setupTodos() {
 
 setupTodos();
 
+// ── Someday List ─────────────────────────────────────────────────────
+
+let currentProjects = [];
+let editingProjectId = null;
+
+function formatDeadline(dateStr) {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function renderProjects(items) {
+    const listEl  = document.getElementById('projects-list');
+    const countEl = document.getElementById('projects-count');
+
+    if (items.length === 0) {
+        listEl.innerHTML = '<li class="empty-state">No projects yet — add one below!</li>';
+        countEl.textContent = '—';
+        return;
+    }
+
+    const remaining = items.filter(i => !i.completed).length;
+    countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    listEl.innerHTML = '';
+    items.forEach(item => {
+        const li = document.createElement('li');
+
+        if (item.id === editingProjectId) {
+            li.className = 'item item-editing';
+            li.innerHTML = `
+                <div class="edit-form">
+                    <input type="text" class="add-input" id="edit-project-text" value="${escapeHtml(item.text)}" maxlength="200">
+                    <div class="project-edit-secondary">
+                        <input type="date" class="add-input" id="edit-project-deadline" value="${item.deadline || ''}">
+                        <label class="todo-needs-help-label">
+                            <input type="checkbox" id="edit-project-needs-help" ${item.needsHelp ? 'checked' : ''}>
+                            <span>Needs help</span>
+                        </label>
+                    </div>
+                    <div class="edit-actions">
+                        <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                        <button class="edit-cancel-btn">Cancel</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            li.className = 'item';
+
+            const metaParts = [];
+            if (item.deadline) {
+                const overdue = item.deadline < today && !item.completed;
+                metaParts.push(`<span class="project-deadline${overdue ? ' overdue' : ''}">📅 ${formatDeadline(item.deadline)}${overdue ? ' · overdue' : ''}</span>`);
+            }
+            if (item.needsHelp) {
+                metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
+            }
+            const metaHtml = metaParts.length
+                ? `<div class="todo-meta">${metaParts.join('')}</div>`
+                : '';
+
+            li.innerHTML = `
+                <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
+                <div class="todo-content">
+                    <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                    ${metaHtml}
+                </div>
+                <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+            `;
+        }
+        listEl.appendChild(li);
+    });
+}
+
+function setupProjects() {
+    const listEl = document.getElementById('projects-list');
+    const col    = collection(db, 'projects');
+    const q      = query(col, orderBy('createdAt', 'asc'));
+
+    onSnapshot(q, snapshot => {
+        currentProjects = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!editingProjectId) renderProjects(currentProjects);
+        setStatus('Synced ✓');
+    }, err => {
+        setStatus('Could not connect — check your Firebase config', true);
+        console.error(err);
+    });
+
+    async function addItem() {
+        const text      = document.getElementById('projects-input').value.trim();
+        const deadline  = document.getElementById('projects-deadline').value;
+        const needsHelp = document.getElementById('projects-needs-help').checked;
+        if (!text) return;
+
+        document.getElementById('projects-input').value        = '';
+        document.getElementById('projects-deadline').value     = '';
+        document.getElementById('projects-needs-help').checked = false;
+
+        try {
+            await addDoc(col, {
+                text,
+                deadline:  deadline  || null,
+                needsHelp: needsHelp,
+                completed: false,
+                createdAt: serverTimestamp()
+            });
+        } catch (e) {
+            setStatus('Failed to save project', true);
+            console.error(e);
+        }
+    }
+
+    document.getElementById('projects-add').addEventListener('click', addItem);
+    document.getElementById('projects-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addItem();
+    });
+
+    listEl.addEventListener('keydown', e => {
+        if (!editingProjectId) return;
+        if (e.key === 'Enter' && e.target.type !== 'date') {
+            e.preventDefault();
+            listEl.querySelector('.edit-save-btn')?.click();
+        }
+        if (e.key === 'Escape') {
+            editingProjectId = null;
+            renderProjects(currentProjects);
+        }
+    });
+
+    listEl.addEventListener('click', async e => {
+        const editBtn   = e.target.closest('.item-edit');
+        const saveBtn   = e.target.closest('.edit-save-btn');
+        const cancelBtn = e.target.closest('.edit-cancel-btn');
+        const checkbox  = e.target.closest('.item-checkbox');
+        const deleteBtn = e.target.closest('.item-delete');
+
+        if (editBtn) {
+            editingProjectId = editBtn.dataset.id;
+            renderProjects(currentProjects);
+            setTimeout(() => document.getElementById('edit-project-text')?.focus(), 50);
+            return;
+        }
+
+        if (saveBtn) {
+            const text      = document.getElementById('edit-project-text').value.trim();
+            const deadline  = document.getElementById('edit-project-deadline').value;
+            const needsHelp = document.getElementById('edit-project-needs-help').checked;
+            if (!text) return;
+            try {
+                await updateDoc(doc(db, 'projects', saveBtn.dataset.id), {
+                    text,
+                    deadline:  deadline  || null,
+                    needsHelp: needsHelp,
+                });
+                editingProjectId = null;
+                renderProjects(currentProjects);
+            } catch (err) {
+                setStatus('Failed to update project', true);
+            }
+            return;
+        }
+
+        if (cancelBtn) {
+            editingProjectId = null;
+            renderProjects(currentProjects);
+            return;
+        }
+
+        if (checkbox) {
+            const isChecked = checkbox.classList.contains('checked');
+            try {
+                await updateDoc(doc(db, 'projects', checkbox.dataset.id), { completed: !isChecked });
+            } catch (err) {
+                setStatus('Failed to update project', true);
+            }
+        }
+
+        if (deleteBtn) {
+            try {
+                await deleteDoc(doc(db, 'projects', deleteBtn.dataset.id));
+            } catch (err) {
+                setStatus('Failed to delete project', true);
+            }
+        }
+    });
+}
+
+setupProjects();
+
 // ── Shopping Overview ────────────────────────────────────────────────
 
 let editingShoppingId = null;

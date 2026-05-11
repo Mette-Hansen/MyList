@@ -351,6 +351,34 @@ h1 {
     }
 }
 
+/* ── Someday List ── */
+
+.projects-add-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.projects-add-form .add-input {
+    min-width: 0;
+}
+
+.project-deadline {
+    color: #8b6f47;
+}
+
+.project-deadline.overdue {
+    color: #c0504a;
+    font-weight: 600;
+}
+
+.project-edit-secondary {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+}
+
 /* ── Shopping Overview ── */
 
 #shopping-table-wrap {
@@ -470,6 +498,16 @@ h1 {
 
 .shopping-add-form .add-input {
     min-width: 0;
+}
+
+@media (max-width: 560px) {
+    .projects-add-form {
+        grid-template-columns: 1fr auto auto;
+    }
+
+    .projects-text-input {
+        grid-column: 1 / -1;
+    }
 }
 
 @media (max-width: 560px) {

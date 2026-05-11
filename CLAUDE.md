@@ -12,6 +12,7 @@
 | `groceries` | `text`, `category` (string), `completed` (bool), `createdAt` (serverTimestamp) |
 | `todos` | `text`, `priority` (high/mid/low/null), `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
 | `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
+| `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern
 - `currentGroceries` / `currentTodos` / `currentShopping` hold the latest snapshot arrays
