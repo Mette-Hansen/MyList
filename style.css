@@ -682,11 +682,13 @@ h1 {
 }
 
 .shop-link-input,
+.todo-link-input,
 .edit-link-input {
     grid-column: 1 / -1;
 }
 
-.col-item a {
+.col-item a,
+.todo-content .item-text a {
     color: inherit;
     text-decoration: underline;
     text-decoration-color: #c9b99a;
@@ -694,7 +696,8 @@ h1 {
     transition: color 0.2s, text-decoration-color 0.2s;
 }
 
-.col-item a:hover {
+.col-item a:hover,
+.todo-content .item-text a:hover {
     color: #8b6f47;
     text-decoration-color: #8b6f47;
 }

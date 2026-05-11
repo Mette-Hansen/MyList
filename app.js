@@ -296,6 +296,11 @@ function renderTodos(items) {
                             <span>Needs help</span>
                         </label>
                     </div>
+                    <label class="link-toggle-label">
+                        <input type="checkbox" id="edit-todo-link-toggle" ${item.link ? 'checked' : ''}>
+                        <span>Add link</span>
+                    </label>
+                    <input type="url" class="add-input edit-link-input" id="edit-todo-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." style="${item.link ? '' : 'display:none'}">
                     <div class="edit-actions">
                         <button class="edit-save-btn" data-id="${item.id}">Save</button>
                         <button class="edit-cancel-btn">Cancel</button>
@@ -318,10 +323,15 @@ function renderTodos(items) {
                 ? `<div class="todo-meta">${metaParts.join('')}</div>`
                 : '';
 
+            const href = safeUrl(item.link);
+            const textContent = href
+                ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text)}</a>`
+                : escapeHtml(item.text);
+
             li.innerHTML = `
                 <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
                 <div class="todo-content">
-                    <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                    <span class="item-text ${item.completed ? 'completed' : ''}">${textContent}</span>
                     ${metaHtml}
                 </div>
                 ${priorityBadge}
@@ -351,17 +361,22 @@ function setupTodos() {
         const text      = document.getElementById('todo-input').value.trim();
         const priority  = document.getElementById('todo-priority').value;
         const needsHelp = document.getElementById('todo-needs-help').checked;
+        const link      = document.getElementById('todo-link').value.trim();
         if (!text) return;
 
-        document.getElementById('todo-input').value        = '';
-        document.getElementById('todo-priority').value     = '';
-        document.getElementById('todo-needs-help').checked = false;
+        document.getElementById('todo-input').value         = '';
+        document.getElementById('todo-priority').value      = '';
+        document.getElementById('todo-needs-help').checked  = false;
+        document.getElementById('todo-link').value          = '';
+        document.getElementById('todo-link-toggle').checked = false;
+        document.getElementById('todo-link').style.display  = 'none';
 
         try {
             await addDoc(col, {
                 text,
                 priority:  priority  || null,
                 needsHelp: needsHelp,
+                link:      normalizeUrl(link),
                 completed: false,
                 createdAt: serverTimestamp()
             });
@@ -374,6 +389,22 @@ function setupTodos() {
     document.getElementById('todo-add').addEventListener('click', addItem);
     document.getElementById('todo-input').addEventListener('keydown', e => {
         if (e.key === 'Enter') addItem();
+    });
+
+    document.getElementById('todo-link-toggle').addEventListener('change', e => {
+        const input = document.getElementById('todo-link');
+        input.style.display = e.target.checked ? 'block' : 'none';
+        if (!e.target.checked) input.value = '';
+        else input.focus();
+    });
+
+    listEl.addEventListener('change', e => {
+        const toggle = e.target.closest('#edit-todo-link-toggle');
+        if (!toggle) return;
+        const input = document.getElementById('edit-todo-link');
+        input.style.display = toggle.checked ? 'block' : 'none';
+        if (!toggle.checked) input.value = '';
+        else input.focus();
     });
 
     listEl.addEventListener('keydown', e => {
@@ -406,12 +437,14 @@ function setupTodos() {
             const text      = document.getElementById('edit-todo-text').value.trim();
             const priority  = document.getElementById('edit-todo-priority').value;
             const needsHelp = document.getElementById('edit-todo-needs-help').checked;
+            const link      = document.getElementById('edit-todo-link').value.trim();
             if (!text) return;
             try {
                 await updateDoc(doc(db, 'todos', saveBtn.dataset.id), {
                     text,
                     priority:  priority  || null,
                     needsHelp: needsHelp,
+                    link:      normalizeUrl(link),
                 });
                 editingTodoId = null;
                 renderTodos(currentTodos);
