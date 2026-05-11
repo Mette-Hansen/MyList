@@ -453,7 +453,7 @@ setupTodos();
 let currentProjects = [];
 let editingProjectId = null;
 
-function downloadICS(item) {
+async function downloadICS(item) {
     const escICS = s => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 
     const start = item.deadline.replace(/-/g, '');
@@ -477,12 +477,31 @@ function downloadICS(item) {
         'END:VCALENDAR',
     ].filter(Boolean).join('\r\n');
 
+    const filename = item.text.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_') + '.ics';
     const blob = new Blob([lines], { type: 'text/calendar;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    // Navigate directly — iOS Safari intercepts text/calendar and opens Calendar app.
-    // Using <a download> sends it to Files instead of Calendar.
-    window.location.href = url;
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    // iOS 15+: Web Share API opens the native share sheet, which includes Calendar
+    if (navigator.canShare) {
+        const file = new File([blob], filename, { type: 'text/calendar' });
+        if (navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: item.text });
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error(e);
+            }
+            return;
+        }
+    }
+
+    // Desktop fallback: trigger download
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function formatDeadline(dateStr) {
