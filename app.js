@@ -453,6 +453,41 @@ setupTodos();
 let currentProjects = [];
 let editingProjectId = null;
 
+function downloadICS(item) {
+    const escICS = s => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
+    const start = item.deadline.replace(/-/g, '');
+    const [y, m, d] = item.deadline.split('-').map(Number);
+    const nextDay = new Date(y, m - 1, d + 1);
+    const end = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
+    const stamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//MyList//Someday List//EN',
+        'BEGIN:VEVENT',
+        `UID:${item.id}@mylist`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${start}`,
+        `DTEND;VALUE=DATE:${end}`,
+        `SUMMARY:${escICS(item.text)}`,
+        item.needsHelp ? 'DESCRIPTION:Needs help' : '',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+
+    const blob = new Blob([lines], { type: 'text/calendar;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = item.text.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_') + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 function formatDeadline(dateStr) {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -511,12 +546,17 @@ function renderProjects(items) {
                 ? `<div class="todo-meta">${metaParts.join('')}</div>`
                 : '';
 
+            const calBtn = item.deadline
+                ? `<button class="item-cal" data-id="${item.id}" title="Add to calendar">🗓</button>`
+                : '';
+
             li.innerHTML = `
                 <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
                 <div class="todo-content">
                     <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
                     ${metaHtml}
                 </div>
+                ${calBtn}
                 <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
                 <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
             `;
@@ -586,6 +626,13 @@ function setupProjects() {
         const cancelBtn = e.target.closest('.edit-cancel-btn');
         const checkbox  = e.target.closest('.item-checkbox');
         const deleteBtn = e.target.closest('.item-delete');
+        const calBtn    = e.target.closest('.item-cal');
+
+        if (calBtn) {
+            const item = currentProjects.find(i => i.id === calBtn.dataset.id);
+            if (item) downloadICS(item);
+            return;
+        }
 
         if (editBtn) {
             editingProjectId = editBtn.dataset.id;

@@ -373,6 +373,23 @@ h1 {
     font-weight: 600;
 }
 
+.item-cal {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px 6px;
+    border-radius: 6px;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: 0.55;
+    transition: opacity 0.2s;
+}
+
+.item-cal:hover {
+    opacity: 1;
+}
+
 .project-edit-secondary {
     display: grid;
     grid-template-columns: 1fr auto;
