@@ -457,28 +457,51 @@ let editingProjectId = null;
 async function downloadICS(item) {
     const escICS = s => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 
+    // RFC 5545 §3.1: fold lines that exceed 75 octets
+    function fold(line) {
+        const enc = new TextEncoder();
+        if (enc.encode(line).length <= 75) return line;
+        const out = [];
+        let current = '';
+        for (const char of line) {
+            const candidate = current + char;
+            if (enc.encode(candidate).length > (out.length === 0 ? 75 : 74)) {
+                out.push(current);
+                current = ' ' + char;
+            } else {
+                current = candidate;
+            }
+        }
+        if (current) out.push(current);
+        return out.join('\r\n');
+    }
+
     const start = item.deadline.replace(/-/g, '');
     const [y, m, d] = item.deadline.split('-').map(Number);
     const nextDay = new Date(y, m - 1, d + 1);
     const end = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
     const stamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 
-    const lines = [
+    const props = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
         'CALSCALE:GREGORIAN',
         'METHOD:PUBLISH',
-        'PRODID:-//MyList//Someday List//EN',
+        'PRODID:-//MyList//EN',
         'BEGIN:VEVENT',
         `UID:${item.id}@mylist`,
         `DTSTAMP:${stamp}`,
         `DTSTART;VALUE=DATE:${start}`,
         `DTEND;VALUE=DATE:${end}`,
         `SUMMARY:${escICS(item.text)}`,
-        item.needsHelp ? 'DESCRIPTION:Needs help' : '',
+        item.needsHelp ? 'DESCRIPTION:Needs help' : null,
+        'STATUS:CONFIRMED',
+        'SEQUENCE:0',
         'END:VEVENT',
         'END:VCALENDAR',
-    ].filter(Boolean).join('\r\n') + '\r\n';
+    ].filter(Boolean);
+
+    const lines = props.map(fold).join('\r\n') + '\r\n';
 
     const filename = item.text.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_') + '.ics';
     const blob = new Blob([lines], { type: 'text/calendar;charset=utf-8' });
