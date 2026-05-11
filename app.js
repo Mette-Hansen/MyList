@@ -479,13 +479,10 @@ function downloadICS(item) {
 
     const blob = new Blob([lines], { type: 'text/calendar;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = item.text.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_') + '.ics';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Navigate directly — iOS Safari intercepts text/calendar and opens Calendar app.
+    // Using <a download> sends it to Files instead of Calendar.
+    window.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 function formatDeadline(dateStr) {
