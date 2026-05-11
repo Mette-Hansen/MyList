@@ -453,6 +453,15 @@ setupTodos();
 let currentProjects = [];
 let editingProjectId = null;
 
+function googleCalUrl(item) {
+    const start = item.deadline.replace(/-/g, '');
+    const [y, m, d] = item.deadline.split('-').map(Number);
+    const nextDay = new Date(y, m - 1, d + 1);
+    const end = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
+    const details = item.needsHelp ? 'Needs help' : '';
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(item.text)}&dates=${start}/${end}${details ? '&details=' + encodeURIComponent(details) : ''}`;
+}
+
 async function downloadICS(item) {
     const escICS = s => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 
@@ -568,9 +577,10 @@ function renderProjects(items) {
                 ? `<div class="todo-meta">${metaParts.join('')}</div>`
                 : '';
 
-            const calBtn = item.deadline
-                ? `<button class="item-cal" data-id="${item.id}" title="Add to calendar">🗓</button>`
-                : '';
+            const calBtns = item.deadline ? `
+                <button class="item-cal" data-id="${item.id}" title="Add to Apple Calendar (.ics)">🗓</button>
+                <button class="item-gcal" data-id="${item.id}" title="Add to Google Calendar">G</button>
+            ` : '';
 
             li.innerHTML = `
                 <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
@@ -578,7 +588,7 @@ function renderProjects(items) {
                     <span class="item-text ${item.completed ? 'completed' : ''}">${escapeHtml(item.text)}</span>
                     ${metaHtml}
                 </div>
-                ${calBtn}
+                ${calBtns}
                 <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
                 <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
             `;
@@ -649,10 +659,17 @@ function setupProjects() {
         const checkbox  = e.target.closest('.item-checkbox');
         const deleteBtn = e.target.closest('.item-delete');
         const calBtn    = e.target.closest('.item-cal');
+        const gcalBtn   = e.target.closest('.item-gcal');
 
         if (calBtn) {
             const item = currentProjects.find(i => i.id === calBtn.dataset.id);
             if (item) downloadICS(item);
+            return;
+        }
+
+        if (gcalBtn) {
+            const item = currentProjects.find(i => i.id === gcalBtn.dataset.id);
+            if (item) window.open(googleCalUrl(item), '_blank');
             return;
         }
 

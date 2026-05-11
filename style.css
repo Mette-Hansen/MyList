@@ -390,6 +390,26 @@ h1 {
     opacity: 1;
 }
 
+.item-gcal {
+    background: none;
+    border: 1.5px solid #d4bfab;
+    color: #8b6f47;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 6px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: border-color 0.2s, color 0.2s;
+    font-family: inherit;
+}
+
+.item-gcal:hover {
+    border-color: #8b6f47;
+    color: #5c4a32;
+}
+
 .project-edit-secondary {
     display: grid;
     grid-template-columns: 1fr auto;
