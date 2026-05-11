@@ -465,6 +465,8 @@ async function downloadICS(item) {
     const lines = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
         'PRODID:-//MyList//Someday List//EN',
         'BEGIN:VEVENT',
         `UID:${item.id}@mylist`,
@@ -475,13 +477,17 @@ async function downloadICS(item) {
         item.needsHelp ? 'DESCRIPTION:Needs help' : '',
         'END:VEVENT',
         'END:VCALENDAR',
-    ].filter(Boolean).join('\r\n');
+    ].filter(Boolean).join('\r\n') + '\r\n';
 
     const filename = item.text.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_') + '.ics';
     const blob = new Blob([lines], { type: 'text/calendar;charset=utf-8' });
 
-    // iOS 15+: Web Share API opens the native share sheet, which includes Calendar
-    if (navigator.canShare) {
+    // Chrome on iOS (CriOS): use its own download manager — gives a direct
+    // "Open" button that hands the file to Calendar, unlike the Web Share API
+    // which routes through Files with no obvious next step.
+    const isChromeIOS = /CriOS/i.test(navigator.userAgent);
+
+    if (!isChromeIOS && navigator.canShare) {
         const file = new File([blob], filename, { type: 'text/calendar' });
         if (navigator.canShare({ files: [file] })) {
             try {
@@ -493,7 +499,7 @@ async function downloadICS(item) {
         }
     }
 
-    // Desktop fallback: trigger download
+    // Chrome iOS + desktop: standard download
     const url = URL.createObjectURL(blob);
     const a   = document.createElement('a');
     a.href     = url;
