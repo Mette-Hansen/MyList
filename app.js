@@ -587,9 +587,9 @@ function renderProjects(items) {
     countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
     const sortAlphaDate = (a, b) => {
-        const t = a.text.localeCompare(b.text, 'da');
-        if (t !== 0) return t;
-        return (a.deadline || '9999-99-99') < (b.deadline || '9999-99-99') ? -1 : 1;
+        const dCmp = (a.deadline || '9999-99-99') < (b.deadline || '9999-99-99') ? -1 : 1;
+        if (a.deadline !== b.deadline) return dCmp;
+        return a.text.localeCompare(b.text, 'da');
     };
 
     const groups = [
