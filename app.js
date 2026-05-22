@@ -586,10 +586,19 @@ function renderProjects(items) {
     const remaining = items.filter(i => !i.completed).length;
     countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
+    const sorted = [...items].sort((a, b) => {
+        const textCmp = a.text.localeCompare(b.text, 'da');
+        if (textCmp !== 0) return textCmp;
+        const aDate = a.deadline || '9999-99-99';
+        const bDate = b.deadline || '9999-99-99';
+        if (aDate !== bDate) return aDate < bDate ? -1 : 1;
+        return (b.needsHelp ? 1 : 0) - (a.needsHelp ? 1 : 0);
+    });
+
     const today = new Date().toISOString().slice(0, 10);
 
     listEl.innerHTML = '';
-    items.forEach(item => {
+    sorted.forEach(item => {
         const li = document.createElement('li');
 
         if (item.id === editingProjectId) {
