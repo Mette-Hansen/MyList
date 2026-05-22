@@ -586,19 +586,31 @@ function renderProjects(items) {
     const remaining = items.filter(i => !i.completed).length;
     countEl.textContent = remaining === 0 ? 'all done!' : `${remaining} left`;
 
-    const sorted = [...items].sort((a, b) => {
-        const textCmp = a.text.localeCompare(b.text, 'da');
-        if (textCmp !== 0) return textCmp;
-        const aDate = a.deadline || '9999-99-99';
-        const bDate = b.deadline || '9999-99-99';
-        if (aDate !== bDate) return aDate < bDate ? -1 : 1;
-        return (b.needsHelp ? 1 : 0) - (a.needsHelp ? 1 : 0);
-    });
+    const sortAlphaDate = (a, b) => {
+        const t = a.text.localeCompare(b.text, 'da');
+        if (t !== 0) return t;
+        return (a.deadline || '9999-99-99') < (b.deadline || '9999-99-99') ? -1 : 1;
+    };
+
+    const groups = [
+        { key: 'both',    label: '📅 👥 Date & needs help', items: items.filter(i =>  i.deadline &&  i.needsHelp).sort(sortAlphaDate) },
+        { key: 'date',    label: '📅 Date',                  items: items.filter(i =>  i.deadline && !i.needsHelp).sort(sortAlphaDate) },
+        { key: 'help',    label: '👥 Needs help',            items: items.filter(i => !i.deadline &&  i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
+        { key: 'plain',   label: null,                       items: items.filter(i => !i.deadline && !i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
+    ];
 
     const today = new Date().toISOString().slice(0, 10);
 
     listEl.innerHTML = '';
-    sorted.forEach(item => {
+    groups.forEach(group => {
+        if (group.items.length === 0) return;
+        if (group.label) {
+            const header = document.createElement('li');
+            header.className = 'project-group-header';
+            header.textContent = group.label;
+            listEl.appendChild(header);
+        }
+        group.items.forEach(item => {
         const li = document.createElement('li');
 
         if (item.id === editingProjectId) {
@@ -650,7 +662,8 @@ function renderProjects(items) {
             `;
         }
         listEl.appendChild(li);
-    });
+        }); // group.items
+    }); // groups
 }
 
 function setupProjects() {

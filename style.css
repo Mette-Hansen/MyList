@@ -364,6 +364,22 @@ h1 {
     min-width: 0;
 }
 
+.project-group-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #a08060;
+    padding: 10px 0 4px;
+    list-style: none;
+    border-bottom: 1px solid #ede5d8;
+    margin-bottom: 2px;
+}
+
+.project-group-header:first-child {
+    padding-top: 0;
+}
+
 .project-deadline {
     color: #8b6f47;
 }
