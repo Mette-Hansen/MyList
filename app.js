@@ -593,10 +593,9 @@ function renderProjects(items) {
     };
 
     const groups = [
-        { key: 'both',    label: '📅 👥 Date & needs help', items: items.filter(i =>  i.deadline &&  i.needsHelp).sort(sortAlphaDate) },
-        { key: 'date',    label: '📅 Date',                  items: items.filter(i =>  i.deadline && !i.needsHelp).sort(sortAlphaDate) },
-        { key: 'help',    label: '👥 Needs help',            items: items.filter(i => !i.deadline &&  i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
-        { key: 'plain',   label: null,                       items: items.filter(i => !i.deadline && !i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
+        { key: 'date',  label: '📅 Date',       items: items.filter(i =>  i.deadline).sort(sortAlphaDate) },
+        { key: 'help',  label: '👥 Needs help',  items: items.filter(i => !i.deadline &&  i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
+        { key: 'plain', label: '✨ Someday',      items: items.filter(i => !i.deadline && !i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
     ];
 
     const today = new Date().toISOString().slice(0, 10);
