@@ -539,7 +539,8 @@ h1 {
     }
 
     .projects-text-input,
-    .projects-date-input {
+    .projects-date-input,
+    .projects-add-form .todo-needs-help-label {
         grid-column: 1 / -1;
     }
 }
