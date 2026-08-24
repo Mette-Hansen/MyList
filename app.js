@@ -1092,7 +1092,7 @@ let editingRecipeId   = null;
 let currentRecipes    = [];
 
 function isCreatedRecipe(item) {
-    return !!(item.ingredients?.length || item.steps?.length);
+    return item.type === 'created' || !!(item.ingredients?.length || item.steps?.length);
 }
 
 function recipeRowHtml(kind, value = '', number = null) {
@@ -1177,6 +1177,9 @@ function recipeDetailsHtml(item) {
                <ol class="recipe-details-list">${item.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
            </div>`
         : '';
+    if (!ingredientsHtml && !stepsHtml) {
+        return '<p class="empty-state">No ingredients or steps saved yet — edit this recipe to add them.</p>';
+    }
     return `<div class="recipe-details">${ingredientsHtml}${stepsHtml}</div>`;
 }
 
@@ -1298,6 +1301,7 @@ function setupRecipes() {
         try {
             await addDoc(col, {
                 text,
+                type: 'link',
                 link: normalizeUrl(link),
                 ingredients: [],
                 steps: [],
@@ -1342,6 +1346,7 @@ function setupRecipes() {
         try {
             await addDoc(col, {
                 text,
+                type: 'created',
                 link: null,
                 ingredients,
                 steps,
@@ -1412,12 +1417,14 @@ function setupRecipes() {
             const updates = ingredientsSection
                 ? {
                     text,
+                    type: 'created',
                     link: null,
                     ingredients: collectRowValues(ingredientsSection),
                     steps: collectRowValues(document.getElementById('edit-recipe-steps')),
                 }
                 : {
                     text,
+                    type: 'link',
                     link: normalizeUrl(document.getElementById('edit-recipe-link').value.trim()),
                     ingredients: [],
                     steps: [],
