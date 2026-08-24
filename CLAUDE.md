@@ -13,6 +13,7 @@
 | `todos` | `text`, `priority` (high/mid/low/null), `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `link` (URL string/null), `completed` (bool), `createdAt` (serverTimestamp) |
 | `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
 | `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
+| `recipes` | `text`, `link` (URL string/null), `ingredients` (array of strings), `steps` (array of strings), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern
 - `currentGroceries` / `currentTodos` / `currentShopping` hold the latest snapshot arrays

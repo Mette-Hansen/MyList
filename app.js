@@ -52,6 +52,34 @@ function safeUrl(url) {
     } catch { return null; }
 }
 
+// ── Page toggle ──────────────────────────────────────────────────────
+
+function setupPageToggle() {
+    const titleEl    = document.getElementById('page-title');
+    const toggleBtn  = document.getElementById('page-toggle');
+    const listsPage   = document.getElementById('page-lists');
+    const recipesPage = document.getElementById('page-recipes');
+
+    function showPage(page) {
+        const onRecipes = page === 'recipes';
+        listsPage.hidden   = onRecipes;
+        recipesPage.hidden = !onRecipes;
+        titleEl.textContent  = onRecipes ? 'My Recipes' : 'My Lists';
+        toggleBtn.textContent = onRecipes ? '/ My lists' : '/ My recipes';
+        try { localStorage.setItem('mylist-page', page); } catch {}
+    }
+
+    let saved = 'lists';
+    try { saved = localStorage.getItem('mylist-page') || 'lists'; } catch {}
+    showPage(saved);
+
+    toggleBtn.addEventListener('click', () => {
+        showPage(listsPage.hidden ? 'lists' : 'recipes');
+    });
+}
+
+setupPageToggle();
+
 // ── Grocery List ─────────────────────────────────────────────────────
 
 const GROCERY_CATEGORIES = [
@@ -1057,3 +1085,399 @@ function setupShopping() {
 }
 
 setupShopping();
+
+// ── My Recipes ───────────────────────────────────────────────────────
+
+let editingRecipeId   = null;
+let currentRecipes    = [];
+
+function isCreatedRecipe(item) {
+    return !!(item.ingredients?.length || item.steps?.length);
+}
+
+function recipeRowHtml(kind, value = '', number = null) {
+    const numHtml = kind === 'steps' ? `<span class="row-num">${number != null ? number + '.' : ''}</span>` : '';
+    const placeholder = kind === 'steps' ? 'Describe this step' : 'e.g. 200g pasta';
+    return `
+        <div class="recipe-row">
+            ${numHtml}
+            <input type="text" class="add-input recipe-row-input" value="${escapeHtml(value)}" placeholder="${placeholder}" maxlength="200">
+            <button type="button" class="row-remove" title="Remove">×</button>
+        </div>`;
+}
+
+function recipeRowsSectionHtml(kind, label, values) {
+    const vals = values && values.length ? values : [''];
+    return `
+        <div class="recipe-rows-section" data-kind="${kind}">
+            <div class="recipe-rows-label">${label}</div>
+            <div class="recipe-rows">${vals.map((v, i) => recipeRowHtml(kind, v, i + 1)).join('')}</div>
+            <button type="button" class="row-add-btn" data-add="${kind}">+ Add ${kind === 'steps' ? 'step' : 'ingredient'}</button>
+        </div>`;
+}
+
+function renumberSteps(rowsEl) {
+    rowsEl.querySelectorAll('.recipe-row').forEach((row, i) => {
+        const num = row.querySelector('.row-num');
+        if (num) num.textContent = (i + 1) + '.';
+    });
+}
+
+function insertRecipeRow(section) {
+    const kind   = section.dataset.kind;
+    const rowsEl = section.querySelector('.recipe-rows');
+    rowsEl.insertAdjacentHTML('beforeend', recipeRowHtml(kind, ''));
+    if (kind === 'steps') renumberSteps(rowsEl);
+    rowsEl.querySelector('.recipe-row:last-child input')?.focus();
+}
+
+function collectRowValues(sectionEl) {
+    return [...sectionEl.querySelectorAll('.recipe-row-input')]
+        .map(i => i.value.trim())
+        .filter(Boolean);
+}
+
+function handleRecipeRowClick(e) {
+    const addBtn = e.target.closest('.row-add-btn');
+    if (addBtn) {
+        insertRecipeRow(addBtn.closest('.recipe-rows-section'));
+        return true;
+    }
+    const removeBtn = e.target.closest('.row-remove');
+    if (removeBtn) {
+        const row     = removeBtn.closest('.recipe-row');
+        const section = row.closest('.recipe-rows-section');
+        const rowsEl  = row.closest('.recipe-rows');
+        row.remove();
+        if (section?.dataset.kind === 'steps') renumberSteps(rowsEl);
+        return true;
+    }
+    return false;
+}
+
+function handleRecipeRowKeydown(e) {
+    if (e.key !== 'Enter') return false;
+    const rowInput = e.target.closest('.recipe-row-input');
+    if (!rowInput) return false;
+    e.preventDefault();
+    insertRecipeRow(rowInput.closest('.recipe-rows-section'));
+    return true;
+}
+
+function recipeDetailsHtml(item) {
+    const ingredientsHtml = item.ingredients?.length
+        ? `<div class="recipe-details-block">
+               <div class="recipe-details-label">Ingredients</div>
+               <ul class="recipe-details-list">${item.ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+           </div>`
+        : '';
+    const stepsHtml = item.steps?.length
+        ? `<div class="recipe-details-block">
+               <div class="recipe-details-label">Steps</div>
+               <ol class="recipe-details-list">${item.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
+           </div>`
+        : '';
+    return `<div class="recipe-details">${ingredientsHtml}${stepsHtml}</div>`;
+}
+
+function editRecipeFormHtml(item) {
+    if (isCreatedRecipe(item)) {
+        return `
+            <div class="edit-form">
+                <input type="text" class="add-input" id="edit-recipe-text" value="${escapeHtml(item.text)}" maxlength="200">
+                <div id="edit-recipe-ingredients">${recipeRowsSectionHtml('ingredients', 'Ingredients', item.ingredients || [])}</div>
+                <div id="edit-recipe-steps">${recipeRowsSectionHtml('steps', 'Steps', item.steps || [])}</div>
+                <div class="edit-actions">
+                    <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                    <button class="edit-cancel-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+    }
+    return `
+        <div class="edit-form">
+            <input type="text" class="add-input" id="edit-recipe-text" value="${escapeHtml(item.text)}" maxlength="200">
+            <label class="link-toggle-label">
+                <input type="checkbox" id="edit-recipe-link-toggle" ${item.link ? 'checked' : ''}>
+                <span>Add link</span>
+            </label>
+            <input type="url" class="add-input edit-link-input" id="edit-recipe-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." style="${item.link ? '' : 'display:none'}">
+            <div class="edit-actions">
+                <button class="edit-save-btn" data-id="${item.id}">Save</button>
+                <button class="edit-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderRecipes(items) {
+    const listEl  = document.getElementById('recipe-list');
+    const countEl = document.getElementById('recipe-count');
+
+    if (items.length === 0) {
+        listEl.innerHTML = '<li class="empty-state">No recipes yet — add one below!</li>';
+        countEl.textContent = '—';
+        return;
+    }
+
+    countEl.textContent = `${items.length} recipe${items.length === 1 ? '' : 's'}`;
+
+    const sorted = [...items].sort((a, b) => a.text.localeCompare(b.text, 'da'));
+
+    listEl.innerHTML = '';
+    sorted.forEach(item => {
+        const li = document.createElement('li');
+
+        if (item.id === editingRecipeId) {
+            li.className = 'item item-editing';
+            li.innerHTML = editRecipeFormHtml(item);
+        } else {
+            li.className = 'item';
+
+            const href = isCreatedRecipe(item)
+                ? `index.html?recipe=${encodeURIComponent(item.id)}`
+                : safeUrl(item.link);
+            const textContent = href
+                ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text)}</a>`
+                : escapeHtml(item.text);
+
+            li.innerHTML = `
+                <span class="item-text">${textContent}</span>
+                <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+            `;
+        }
+        listEl.appendChild(li);
+    });
+}
+
+function setupRecipes() {
+    const listEl = document.getElementById('recipe-list');
+    const col    = collection(db, 'recipes');
+    const q      = query(col, orderBy('createdAt', 'asc'));
+
+    onSnapshot(q, snapshot => {
+        currentRecipes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!editingRecipeId) renderRecipes(currentRecipes);
+        setStatus('Synced ✓');
+    }, err => {
+        setStatus('Could not connect — check your Firebase config', true);
+        console.error(err);
+    });
+
+    // ── Mode toggle: by link / create new ──
+
+    const modeLinkBtn = document.getElementById('recipe-mode-link');
+    const modeNewBtn  = document.getElementById('recipe-mode-new');
+    const formLink    = document.getElementById('recipe-form-link');
+    const formNew     = document.getElementById('recipe-form-new');
+
+    function setRecipeMode(mode) {
+        const isNew = mode === 'new';
+        formLink.hidden = isNew;
+        formNew.hidden  = !isNew;
+        modeLinkBtn.classList.toggle('active', !isNew);
+        modeNewBtn.classList.toggle('active', isNew);
+    }
+
+    modeLinkBtn.addEventListener('click', () => setRecipeMode('link'));
+    modeNewBtn.addEventListener('click', () => setRecipeMode('new'));
+
+    // ── By link ──
+
+    async function addItem() {
+        const text = document.getElementById('recipe-input').value.trim();
+        const link = document.getElementById('recipe-link').value.trim();
+        if (!text) return;
+
+        document.getElementById('recipe-input').value          = '';
+        document.getElementById('recipe-link').value            = '';
+        document.getElementById('recipe-link-toggle').checked   = false;
+        document.getElementById('recipe-link').style.display    = 'none';
+
+        try {
+            await addDoc(col, {
+                text,
+                link: normalizeUrl(link),
+                ingredients: [],
+                steps: [],
+                createdAt: serverTimestamp()
+            });
+        } catch (e) {
+            setStatus('Failed to save recipe', true);
+            console.error(e);
+        }
+    }
+
+    document.getElementById('recipe-add').addEventListener('click', addItem);
+    document.getElementById('recipe-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addItem();
+    });
+
+    document.getElementById('recipe-link-toggle').addEventListener('change', e => {
+        const input = document.getElementById('recipe-link');
+        input.style.display = e.target.checked ? 'block' : 'none';
+        if (!e.target.checked) input.value = '';
+        else input.focus();
+    });
+
+    // ── Create new ──
+
+    const newIngredientsEl = document.getElementById('recipe-new-ingredients');
+    const newStepsEl       = document.getElementById('recipe-new-steps');
+
+    function resetNewRecipeForm() {
+        document.getElementById('recipe-new-input').value = '';
+        newIngredientsEl.innerHTML = recipeRowsSectionHtml('ingredients', 'Ingredients', []);
+        newStepsEl.innerHTML       = recipeRowsSectionHtml('steps', 'Steps', []);
+    }
+    resetNewRecipeForm();
+
+    async function addNewRecipe() {
+        const text = document.getElementById('recipe-new-input').value.trim();
+        if (!text) return;
+        const ingredients = collectRowValues(newIngredientsEl);
+        const steps       = collectRowValues(newStepsEl);
+
+        try {
+            await addDoc(col, {
+                text,
+                link: null,
+                ingredients,
+                steps,
+                createdAt: serverTimestamp()
+            });
+            resetNewRecipeForm();
+        } catch (e) {
+            setStatus('Failed to save recipe', true);
+            console.error(e);
+        }
+    }
+
+    document.getElementById('recipe-add-new').addEventListener('click', addNewRecipe);
+
+    formNew.addEventListener('click', e => { handleRecipeRowClick(e); });
+    formNew.addEventListener('keydown', e => {
+        if (handleRecipeRowKeydown(e)) return;
+        if (e.key === 'Enter' && e.target.id === 'recipe-new-input') {
+            e.preventDefault();
+            addNewRecipe();
+        }
+    });
+
+    // ── Editing existing recipes ──
+
+    listEl.addEventListener('change', e => {
+        const toggle = e.target.closest('#edit-recipe-link-toggle');
+        if (!toggle) return;
+        const input = document.getElementById('edit-recipe-link');
+        input.style.display = toggle.checked ? 'block' : 'none';
+        if (!toggle.checked) input.value = '';
+        else input.focus();
+    });
+
+    listEl.addEventListener('keydown', e => {
+        if (!editingRecipeId) return;
+        if (handleRecipeRowKeydown(e)) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            listEl.querySelector('.edit-save-btn')?.click();
+        }
+        if (e.key === 'Escape') {
+            editingRecipeId = null;
+            renderRecipes(currentRecipes);
+        }
+    });
+
+    listEl.addEventListener('click', async e => {
+        if (handleRecipeRowClick(e)) return;
+
+        const editBtn   = e.target.closest('.item-edit');
+        const saveBtn   = e.target.closest('.edit-save-btn');
+        const cancelBtn = e.target.closest('.edit-cancel-btn');
+        const deleteBtn = e.target.closest('.item-delete');
+
+        if (editBtn) {
+            editingRecipeId = editBtn.dataset.id;
+            renderRecipes(currentRecipes);
+            setTimeout(() => document.getElementById('edit-recipe-text')?.focus(), 50);
+            return;
+        }
+
+        if (saveBtn) {
+            const text = document.getElementById('edit-recipe-text').value.trim();
+            if (!text) return;
+
+            const ingredientsSection = document.getElementById('edit-recipe-ingredients');
+            const updates = ingredientsSection
+                ? {
+                    text,
+                    link: null,
+                    ingredients: collectRowValues(ingredientsSection),
+                    steps: collectRowValues(document.getElementById('edit-recipe-steps')),
+                }
+                : {
+                    text,
+                    link: normalizeUrl(document.getElementById('edit-recipe-link').value.trim()),
+                    ingredients: [],
+                    steps: [],
+                };
+
+            try {
+                await updateDoc(doc(db, 'recipes', saveBtn.dataset.id), updates);
+                editingRecipeId = null;
+                renderRecipes(currentRecipes);
+            } catch (err) {
+                setStatus('Failed to update recipe', true);
+            }
+            return;
+        }
+
+        if (cancelBtn) {
+            editingRecipeId = null;
+            renderRecipes(currentRecipes);
+            return;
+        }
+
+        if (deleteBtn) {
+            try {
+                await deleteDoc(doc(db, 'recipes', deleteBtn.dataset.id));
+            } catch (err) {
+                setStatus('Failed to delete recipe', true);
+            }
+        }
+    });
+}
+
+function setupRecipeDetailPage() {
+    const id = new URLSearchParams(location.search).get('recipe');
+    if (!id) return;
+
+    document.getElementById('page-header').hidden        = true;
+    document.getElementById('page-lists').hidden          = true;
+    document.getElementById('page-recipes').hidden        = true;
+    document.getElementById('page-recipe-detail').hidden  = false;
+
+    const titleEl = document.getElementById('recipe-detail-title');
+    const bodyEl  = document.getElementById('recipe-detail-body');
+
+    onSnapshot(doc(db, 'recipes', id), snap => {
+        if (!snap.exists()) {
+            titleEl.textContent = 'Recipe not found';
+            bodyEl.innerHTML = '<p class="empty-state">This recipe may have been deleted.</p>';
+            return;
+        }
+        const item = { id: snap.id, ...snap.data() };
+        titleEl.textContent = item.text;
+        document.title = `${item.text} — My Recipes`;
+        bodyEl.innerHTML = isCreatedRecipe(item)
+            ? recipeDetailsHtml(item)
+            : '<p class="empty-state">This recipe has no ingredients or steps saved.</p>';
+    }, err => {
+        setStatus('Could not load recipe', true);
+        console.error(err);
+    });
+}
+
+setupRecipes();
+setupRecipeDetailPage();

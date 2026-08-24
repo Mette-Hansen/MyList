@@ -13,102 +13,158 @@
 
 <body>
 
-    <h1>My Lists</h1>
-
-    <!-- Grocery List Section -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-icon">🛒</span>
-            <span class="section-title">Grocery List</span>
-            <span class="item-count" id="grocery-count">—</span>
-        </div>
-        <ul class="items-list" id="grocery-list">
-            <li class="empty-state">No items yet — add one below!</li>
-        </ul>
-        <div class="grocery-add-form">
-            <input type="text" class="add-input grocery-text-input" id="grocery-input" placeholder="Add item..." maxlength="200">
-            <select class="add-input" id="grocery-category"></select>
-            <button class="add-btn" id="grocery-add">+</button>
-        </div>
+    <div class="page-header" id="page-header">
+        <h1 id="page-title">My Lists</h1>
+        <button type="button" class="page-toggle" id="page-toggle">/ My recipes</button>
     </div>
 
-    <!-- To Do Section -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-icon">✅</span>
-            <span class="section-title">To Do</span>
-            <span class="item-count" id="todo-count">—</span>
-        </div>
-        <ul class="items-list" id="todo-list">
-            <li class="empty-state">No tasks yet — add one below!</li>
-        </ul>
-        <div class="todo-add-form">
-            <input type="text" class="add-input todo-text-input" id="todo-input" placeholder="Add a task..." maxlength="200">
-            <select class="add-input" id="todo-priority">
-                <option value="">Priority</option>
-                <option value="high">High</option>
-                <option value="mid">Mid</option>
-                <option value="low">Low</option>
-            </select>
-            <label class="todo-needs-help-label">
-                <input type="checkbox" id="todo-needs-help">
-                <span>Needs help</span>
-            </label>
-            <button class="add-btn" id="todo-add">+</button>
-            <div class="todo-link-section">
-                <label class="link-toggle-label">
-                    <input type="checkbox" id="todo-link-toggle">
-                    <span>Add link</span>
-                </label>
-                <input type="url" class="add-input" id="todo-link" placeholder="Paste link..." style="display:none">
+    <div class="page" id="page-lists">
+
+        <!-- Grocery List Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🛒</span>
+                <span class="section-title">Grocery List</span>
+                <span class="item-count" id="grocery-count">—</span>
+            </div>
+            <ul class="items-list" id="grocery-list">
+                <li class="empty-state">No items yet — add one below!</li>
+            </ul>
+            <div class="grocery-add-form">
+                <input type="text" class="add-input grocery-text-input" id="grocery-input" placeholder="Add item..." maxlength="200">
+                <select class="add-input" id="grocery-category"></select>
+                <button class="add-btn" id="grocery-add">+</button>
             </div>
         </div>
+
+        <!-- To Do Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">✅</span>
+                <span class="section-title">To Do</span>
+                <span class="item-count" id="todo-count">—</span>
+            </div>
+            <ul class="items-list" id="todo-list">
+                <li class="empty-state">No tasks yet — add one below!</li>
+            </ul>
+            <div class="todo-add-form">
+                <input type="text" class="add-input todo-text-input" id="todo-input" placeholder="Add a task..." maxlength="200">
+                <select class="add-input" id="todo-priority">
+                    <option value="">Priority</option>
+                    <option value="high">High</option>
+                    <option value="mid">Mid</option>
+                    <option value="low">Low</option>
+                </select>
+                <label class="todo-needs-help-label">
+                    <input type="checkbox" id="todo-needs-help">
+                    <span>Needs help</span>
+                </label>
+                <button class="add-btn" id="todo-add">+</button>
+                <div class="todo-link-section">
+                    <label class="link-toggle-label">
+                        <input type="checkbox" id="todo-link-toggle">
+                        <span>Add link</span>
+                    </label>
+                    <input type="url" class="add-input" id="todo-link" placeholder="Paste link..." style="display:none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Shopping Overview Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🏠</span>
+                <span class="section-title">Home Projects</span>
+                <span class="item-count" id="shopping-count">—</span>
+            </div>
+
+            <div id="shopping-table-wrap">
+                <p class="empty-state">No items yet — add one below!</p>
+            </div>
+
+            <div class="shopping-add-form">
+                <input type="text"   class="add-input" id="shop-item"  placeholder="Item"           maxlength="100">
+                <input type="text"   class="add-input" id="shop-store" placeholder="Store"          maxlength="100">
+                <input type="number" class="add-input" id="shop-price" placeholder="Price"          min="0" step="1">
+                <input type="number" class="add-input" id="shop-qty"   placeholder="Qty"            min="1" step="1" value="1">
+                <button class="add-btn" id="shopping-add">+</button>
+                <label class="link-toggle-label" id="shop-link-label">
+                    <input type="checkbox" id="shop-link-toggle">
+                    <span>Add link</span>
+                </label>
+                <input type="url" class="add-input shop-link-input" id="shop-link" placeholder="Paste link..." style="display:none">
+            </div>
+        </div>
+
+        <!-- Someday List Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🌟</span>
+                <span class="section-title">Someday List</span>
+                <span class="item-count" id="projects-count">—</span>
+            </div>
+            <ul class="items-list" id="projects-list">
+                <li class="empty-state">No projects yet — add one below!</li>
+            </ul>
+            <div class="projects-add-form">
+                <input type="text" class="add-input projects-text-input" id="projects-input" placeholder="Add a project..." maxlength="200">
+                <input type="date" class="add-input projects-date-input" id="projects-deadline">
+                <label class="todo-needs-help-label">
+                    <input type="checkbox" id="projects-needs-help">
+                    <span>Needs help</span>
+                </label>
+                <button class="add-btn" id="projects-add">+</button>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Shopping Overview Section -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-icon">🏠</span>
-            <span class="section-title">Home Projects</span>
-            <span class="item-count" id="shopping-count">—</span>
+    <div class="page" id="page-recipes" hidden>
+
+        <!-- My Recipes Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🍳</span>
+                <span class="section-title">My Recipes</span>
+                <span class="item-count" id="recipe-count">—</span>
+            </div>
+            <ul class="items-list" id="recipe-list">
+                <li class="empty-state">No recipes yet — add one below!</li>
+            </ul>
+
+            <div class="recipe-mode-toggle">
+                <button type="button" class="mode-btn active" id="recipe-mode-link">By link</button>
+                <button type="button" class="mode-btn" id="recipe-mode-new">Create new</button>
+            </div>
+
+            <div class="recipe-add-form" id="recipe-form-link">
+                <input type="text" class="add-input recipe-text-input" id="recipe-input" placeholder="Recipe name..." maxlength="200">
+                <button class="add-btn" id="recipe-add">+</button>
+                <label class="link-toggle-label">
+                    <input type="checkbox" id="recipe-link-toggle">
+                    <span>Add link</span>
+                </label>
+                <input type="url" class="add-input recipe-link-input" id="recipe-link" placeholder="Paste link..." style="display:none">
+            </div>
+
+            <div class="recipe-add-form-new" id="recipe-form-new" hidden>
+                <input type="text" class="add-input" id="recipe-new-input" placeholder="Recipe name..." maxlength="200">
+                <div id="recipe-new-ingredients"></div>
+                <div id="recipe-new-steps"></div>
+                <button type="button" class="add-btn recipe-save-btn" id="recipe-add-new">Save recipe</button>
+            </div>
         </div>
 
-        <div id="shopping-table-wrap">
-            <p class="empty-state">No items yet — add one below!</p>
-        </div>
-
-        <div class="shopping-add-form">
-            <input type="text"   class="add-input" id="shop-item"  placeholder="Item"           maxlength="100">
-            <input type="text"   class="add-input" id="shop-store" placeholder="Store"          maxlength="100">
-            <input type="number" class="add-input" id="shop-price" placeholder="Price"          min="0" step="1">
-            <input type="number" class="add-input" id="shop-qty"   placeholder="Qty"            min="1" step="1" value="1">
-            <button class="add-btn" id="shopping-add">+</button>
-            <label class="link-toggle-label" id="shop-link-label">
-                <input type="checkbox" id="shop-link-toggle">
-                <span>Add link</span>
-            </label>
-            <input type="url" class="add-input shop-link-input" id="shop-link" placeholder="Paste link..." style="display:none">
-        </div>
     </div>
 
-    <!-- Someday List Section -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-icon">🌟</span>
-            <span class="section-title">Someday List</span>
-            <span class="item-count" id="projects-count">—</span>
-        </div>
-        <ul class="items-list" id="projects-list">
-            <li class="empty-state">No projects yet — add one below!</li>
-        </ul>
-        <div class="projects-add-form">
-            <input type="text" class="add-input projects-text-input" id="projects-input" placeholder="Add a project..." maxlength="200">
-            <input type="date" class="add-input projects-date-input" id="projects-deadline">
-            <label class="todo-needs-help-label">
-                <input type="checkbox" id="projects-needs-help">
-                <span>Needs help</span>
-            </label>
-            <button class="add-btn" id="projects-add">+</button>
+    <div class="page" id="page-recipe-detail" hidden>
+        <a href="index.html" class="recipe-detail-back">← Back to My Recipes</a>
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🍳</span>
+                <span class="section-title" id="recipe-detail-title">Recipe</span>
+            </div>
+            <div id="recipe-detail-body"></div>
         </div>
     </div>
 
