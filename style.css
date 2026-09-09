@@ -726,52 +726,11 @@ h1 {
 }
 
 .shop-link-input,
-.edit-link-input,
-.recipe-link-input {
+.edit-link-input {
     grid-column: 1 / -1;
 }
 
 /* ── My Recipes ── */
-
-.recipe-add-form {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
-    align-items: center;
-}
-
-.recipe-add-form[hidden] {
-    display: none;
-}
-
-.recipe-add-form .add-input {
-    min-width: 0;
-}
-
-.recipe-mode-toggle {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-}
-
-.mode-btn {
-    flex: 1;
-    background: #f0ebe4;
-    color: #a08060;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-
-.mode-btn.active {
-    background: #8b6f47;
-    color: #fff;
-}
 
 .recipe-add-form-new {
     display: flex;
@@ -779,8 +738,22 @@ h1 {
     gap: 14px;
 }
 
-.recipe-add-form-new[hidden] {
-    display: none;
+.recipe-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border: 2px solid #e8ddd4;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.recipe-card-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #a08060;
+    margin: -4px 0 -6px;
 }
 
 .recipe-rows-section {

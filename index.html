@@ -132,25 +132,13 @@
                 <li class="empty-state">No recipes yet — add one below!</li>
             </ul>
 
-            <div class="recipe-mode-toggle">
-                <button type="button" class="mode-btn active" id="recipe-mode-link">By link</button>
-                <button type="button" class="mode-btn" id="recipe-mode-new">Create new</button>
-            </div>
-
-            <div class="recipe-add-form" id="recipe-form-link">
-                <input type="text" class="add-input recipe-text-input" id="recipe-input" placeholder="Recipe name..." maxlength="200">
-                <button class="add-btn" id="recipe-add">+</button>
-                <label class="link-toggle-label">
-                    <input type="checkbox" id="recipe-link-toggle">
-                    <span>Add link</span>
-                </label>
-                <input type="url" class="add-input recipe-link-input" id="recipe-link" placeholder="Paste link..." style="display:none">
-            </div>
-
-            <div class="recipe-add-form-new" id="recipe-form-new" hidden>
+            <div class="recipe-add-form-new" id="recipe-form-new">
                 <input type="text" class="add-input" id="recipe-new-input" placeholder="Recipe name..." maxlength="200">
-                <div id="recipe-new-ingredients"></div>
-                <div id="recipe-new-steps"></div>
+                <div class="recipe-card">
+                    <div class="recipe-card-label">Recipe</div>
+                    <div id="recipe-new-ingredients"></div>
+                    <div id="recipe-new-steps"></div>
+                </div>
                 <button type="button" class="add-btn recipe-save-btn" id="recipe-add-new">Save recipe</button>
             </div>
         </div>
