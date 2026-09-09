@@ -134,6 +134,11 @@
 
             <div class="recipe-add-form-new" id="recipe-form-new">
                 <input type="text" class="add-input" id="recipe-new-input" placeholder="Recipe name..." maxlength="200">
+                <label class="link-toggle-label">
+                    <input type="checkbox" id="recipe-new-link-toggle">
+                    <span>Add original recipe link</span>
+                </label>
+                <input type="url" class="add-input" id="recipe-new-link" placeholder="Paste link to original recipe..." style="display:none">
                 <div class="recipe-card">
                     <div class="recipe-card-label">Recipe</div>
                     <div id="recipe-new-ingredients"></div>
@@ -152,6 +157,7 @@
                 <span class="section-icon">🍳</span>
                 <span class="section-title" id="recipe-detail-title">Recipe</span>
             </div>
+            <a href="#" class="recipe-detail-source-link" id="recipe-detail-source-link" target="_blank" rel="noopener noreferrer" hidden>View original recipe ↗</a>
             <div id="recipe-detail-body"></div>
         </div>
     </div>

@@ -795,6 +795,27 @@ h1 {
     color: #b0a090;
 }
 
+.recipe-step-row {
+    align-items: flex-start;
+}
+
+.recipe-step-row .row-num {
+    margin-top: 11px;
+}
+
+.recipe-step-row-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.recipe-step-ingredients-input {
+    font-size: 0.85rem;
+    color: #8b6f47;
+}
+
 .row-remove {
     background: none;
     border: none;
@@ -877,6 +898,56 @@ h1 {
     font-size: 0.95rem;
     line-height: 1.7;
     color: #2d2d2d;
+}
+
+.recipe-steps-list {
+    list-style-position: inside;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #2d2d2d;
+}
+
+.recipe-steps-list li {
+    margin-bottom: 12px;
+}
+
+.recipe-steps-list li:last-child {
+    margin-bottom: 0;
+}
+
+.recipe-step-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 0 22px;
+}
+
+.recipe-step-tag {
+    background: #f0e8de;
+    color: #8b6f47;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.recipe-detail-source-link {
+    display: inline-block;
+    color: #8b6f47;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: color 0.2s;
+}
+
+.recipe-detail-source-link[hidden] {
+    display: none;
+}
+
+.recipe-detail-source-link:hover {
+    color: #5c4a32;
 }
 
 .todo-link-section {

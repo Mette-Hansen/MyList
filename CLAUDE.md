@@ -13,7 +13,7 @@
 | `todos` | `text`, `priority` (high/mid/low/null), `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `link` (URL string/null), `completed` (bool), `createdAt` (serverTimestamp) |
 | `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
 | `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
-| `recipes` | `text`, `type` (always `created` now; `link` is a legacy value), `link` (URL string/null, legacy only), `ingredients` (array of strings), `steps` (array of strings), `createdAt` (serverTimestamp) |
+| `recipes` | `text`, `type` (always `created` now; `link` is a legacy value), `link` (URL string/null — original recipe source for created recipes, or the destination URL for legacy link recipes), `ingredients` (array of strings), `steps` (array of `{ text, ingredients }`, where `ingredients` is a string array used to render highlighted tags under the step — legacy plain-string steps are still supported via `normalizeStep()`), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern
 - `currentGroceries` / `currentTodos` / `currentShopping` hold the latest snapshot arrays

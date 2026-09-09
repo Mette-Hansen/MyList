@@ -1095,23 +1095,46 @@ function isCreatedRecipe(item) {
     return item.type === 'created' || !!(item.ingredients?.length || item.steps?.length);
 }
 
-function recipeRowHtml(kind, value = '', number = null) {
-    const numHtml = kind === 'steps' ? `<span class="row-num">${number != null ? number + '.' : ''}</span>` : '';
-    const placeholder = kind === 'steps' ? 'Describe this step' : 'e.g. 200g pasta';
+function normalizeStep(step) {
+    if (typeof step === 'string') return { text: step, ingredients: [] };
+    return { text: step?.text || '', ingredients: step?.ingredients || [] };
+}
+
+function ingredientRowHtml(value = '') {
     return `
         <div class="recipe-row">
-            ${numHtml}
-            <input type="text" class="add-input recipe-row-input" value="${escapeHtml(value)}" placeholder="${placeholder}" maxlength="200">
+            <input type="text" class="add-input recipe-row-input" value="${escapeHtml(value)}" placeholder="e.g. 200g pasta" maxlength="200">
+            <button type="button" class="row-remove" title="Remove">×</button>
+        </div>`;
+}
+
+function stepRowHtml(step, number = null) {
+    const s = normalizeStep(step);
+    const ingredientsStr = s.ingredients.join(', ');
+    return `
+        <div class="recipe-row recipe-step-row">
+            <span class="row-num">${number != null ? number + '.' : ''}</span>
+            <div class="recipe-step-row-fields">
+                <input type="text" class="add-input recipe-row-input" value="${escapeHtml(s.text)}" placeholder="Describe this step" maxlength="300">
+                <input type="text" class="add-input recipe-step-ingredients-input" value="${escapeHtml(ingredientsStr)}" placeholder="Ingredients used in this step (optional, comma-separated)" maxlength="300">
+            </div>
             <button type="button" class="row-remove" title="Remove">×</button>
         </div>`;
 }
 
 function recipeRowsSectionHtml(kind, label, values) {
-    const vals = values && values.length ? values : [''];
+    let rowsHtml;
+    if (kind === 'steps') {
+        const steps = values && values.length ? values : [{ text: '', ingredients: [] }];
+        rowsHtml = steps.map((v, i) => stepRowHtml(v, i + 1)).join('');
+    } else {
+        const vals = values && values.length ? values : [''];
+        rowsHtml = vals.map(v => ingredientRowHtml(v)).join('');
+    }
     return `
         <div class="recipe-rows-section" data-kind="${kind}">
             <div class="recipe-rows-label">${label}</div>
-            <div class="recipe-rows">${vals.map((v, i) => recipeRowHtml(kind, v, i + 1)).join('')}</div>
+            <div class="recipe-rows">${rowsHtml}</div>
             <button type="button" class="row-add-btn" data-add="${kind}">+ Add ${kind === 'steps' ? 'step' : 'ingredient'}</button>
         </div>`;
 }
@@ -1126,15 +1149,27 @@ function renumberSteps(rowsEl) {
 function insertRecipeRow(section) {
     const kind   = section.dataset.kind;
     const rowsEl = section.querySelector('.recipe-rows');
-    rowsEl.insertAdjacentHTML('beforeend', recipeRowHtml(kind, ''));
+    const html   = kind === 'steps' ? stepRowHtml({ text: '', ingredients: [] }) : ingredientRowHtml('');
+    rowsEl.insertAdjacentHTML('beforeend', html);
     if (kind === 'steps') renumberSteps(rowsEl);
-    rowsEl.querySelector('.recipe-row:last-child input')?.focus();
+    rowsEl.querySelector('.recipe-row:last-child .recipe-row-input')?.focus();
 }
 
 function collectRowValues(sectionEl) {
     return [...sectionEl.querySelectorAll('.recipe-row-input')]
         .map(i => i.value.trim())
         .filter(Boolean);
+}
+
+function collectStepValues(sectionEl) {
+    return [...sectionEl.querySelectorAll('.recipe-step-row')]
+        .map(row => {
+            const text = row.querySelector('.recipe-row-input').value.trim();
+            const ingredientsRaw = row.querySelector('.recipe-step-ingredients-input').value.trim();
+            const ingredients = ingredientsRaw ? ingredientsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+            return { text, ingredients };
+        })
+        .filter(s => s.text);
 }
 
 function handleRecipeRowClick(e) {
@@ -1157,7 +1192,7 @@ function handleRecipeRowClick(e) {
 
 function handleRecipeRowKeydown(e) {
     if (e.key !== 'Enter') return false;
-    const rowInput = e.target.closest('.recipe-row-input');
+    const rowInput = e.target.closest('.recipe-row-input, .recipe-step-ingredients-input');
     if (!rowInput) return false;
     e.preventDefault();
     insertRecipeRow(rowInput.closest('.recipe-rows-section'));
@@ -1174,7 +1209,12 @@ function recipeDetailsHtml(item) {
     const stepsHtml = item.steps?.length
         ? `<div class="recipe-details-block">
                <div class="recipe-details-label">Steps</div>
-               <ol class="recipe-details-list">${item.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
+               <ol class="recipe-steps-list">${item.steps.map(normalizeStep).map(s => `
+                   <li>
+                       <span>${escapeHtml(s.text)}</span>
+                       ${s.ingredients.length ? `<div class="recipe-step-tags">${s.ingredients.map(i => `<span class="recipe-step-tag">${escapeHtml(i)}</span>`).join('')}</div>` : ''}
+                   </li>
+               `).join('')}</ol>
            </div>`
         : '';
     if (!ingredientsHtml && !stepsHtml) {
@@ -1187,6 +1227,11 @@ function editRecipeFormHtml(item) {
     return `
         <div class="edit-form">
             <input type="text" class="add-input" id="edit-recipe-text" value="${escapeHtml(item.text)}" maxlength="200">
+            <label class="link-toggle-label">
+                <input type="checkbox" id="edit-recipe-link-toggle" ${item.link ? 'checked' : ''}>
+                <span>Add original recipe link</span>
+            </label>
+            <input type="url" class="add-input edit-link-input" id="edit-recipe-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link to original recipe..." style="${item.link ? '' : 'display:none'}">
             <div class="recipe-card">
                 <div class="recipe-card-label">Recipe</div>
                 <div id="edit-recipe-ingredients">${recipeRowsSectionHtml('ingredients', 'Ingredients', item.ingredients || [])}</div>
@@ -1258,23 +1303,34 @@ function setupRecipes() {
     const newStepsEl       = document.getElementById('recipe-new-steps');
 
     function resetNewRecipeForm() {
-        document.getElementById('recipe-new-input').value = '';
+        document.getElementById('recipe-new-input').value          = '';
+        document.getElementById('recipe-new-link').value            = '';
+        document.getElementById('recipe-new-link-toggle').checked   = false;
+        document.getElementById('recipe-new-link').style.display    = 'none';
         newIngredientsEl.innerHTML = recipeRowsSectionHtml('ingredients', 'Ingredients', []);
         newStepsEl.innerHTML       = recipeRowsSectionHtml('steps', 'Steps', []);
     }
     resetNewRecipeForm();
 
+    document.getElementById('recipe-new-link-toggle').addEventListener('change', e => {
+        const input = document.getElementById('recipe-new-link');
+        input.style.display = e.target.checked ? 'block' : 'none';
+        if (!e.target.checked) input.value = '';
+        else input.focus();
+    });
+
     async function addNewRecipe() {
         const text = document.getElementById('recipe-new-input').value.trim();
         if (!text) return;
+        const link       = document.getElementById('recipe-new-link').value.trim();
         const ingredients = collectRowValues(newIngredientsEl);
-        const steps       = collectRowValues(newStepsEl);
+        const steps       = collectStepValues(newStepsEl);
 
         try {
             await addDoc(col, {
                 text,
                 type: 'created',
-                link: null,
+                link: normalizeUrl(link),
                 ingredients,
                 steps,
                 createdAt: serverTimestamp()
@@ -1298,6 +1354,15 @@ function setupRecipes() {
     });
 
     // ── Editing existing recipes ──
+
+    listEl.addEventListener('change', e => {
+        const toggle = e.target.closest('#edit-recipe-link-toggle');
+        if (!toggle) return;
+        const input = document.getElementById('edit-recipe-link');
+        input.style.display = toggle.checked ? 'block' : 'none';
+        if (!toggle.checked) input.value = '';
+        else input.focus();
+    });
 
     listEl.addEventListener('keydown', e => {
         if (!editingRecipeId) return;
@@ -1334,9 +1399,9 @@ function setupRecipes() {
             const updates = {
                 text,
                 type: 'created',
-                link: null,
+                link: normalizeUrl(document.getElementById('edit-recipe-link').value.trim()),
                 ingredients: collectRowValues(document.getElementById('edit-recipe-ingredients')),
-                steps: collectRowValues(document.getElementById('edit-recipe-steps')),
+                steps: collectStepValues(document.getElementById('edit-recipe-steps')),
             };
 
             try {
@@ -1374,13 +1439,15 @@ function setupRecipeDetailPage() {
     document.getElementById('page-recipes').hidden        = true;
     document.getElementById('page-recipe-detail').hidden  = false;
 
-    const titleEl = document.getElementById('recipe-detail-title');
-    const bodyEl  = document.getElementById('recipe-detail-body');
+    const titleEl      = document.getElementById('recipe-detail-title');
+    const bodyEl       = document.getElementById('recipe-detail-body');
+    const sourceLinkEl = document.getElementById('recipe-detail-source-link');
 
     onSnapshot(doc(db, 'recipes', id), snap => {
         if (!snap.exists()) {
             titleEl.textContent = 'Recipe not found';
             bodyEl.innerHTML = '<p class="empty-state">This recipe may have been deleted.</p>';
+            sourceLinkEl.hidden = true;
             return;
         }
         const item = { id: snap.id, ...snap.data() };
@@ -1389,6 +1456,10 @@ function setupRecipeDetailPage() {
         bodyEl.innerHTML = isCreatedRecipe(item)
             ? recipeDetailsHtml(item)
             : '<p class="empty-state">This recipe has no ingredients or steps saved.</p>';
+
+        const safe = safeUrl(item.link);
+        sourceLinkEl.hidden = !safe;
+        if (safe) sourceLinkEl.href = safe;
     }, err => {
         setStatus('Could not load recipe', true);
         console.error(err);
