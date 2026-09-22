@@ -279,10 +279,74 @@ function setupGroceries() {
 
 setupGroceries();
 
-// ── To Do ────────────────────────────────────────────────────────────
+// ── To Do (Short Term Projects) ─────────────────────────────────────
 
 let editingTodoId = null;
 let currentTodos  = [];
+
+function subtaskRowHtml(subtask) {
+    const s = typeof subtask === 'string' ? { text: subtask, completed: false } : subtask;
+    return `
+        <div class="subtask-row" data-completed="${s.completed ? '1' : '0'}">
+            <input type="text" class="add-input subtask-row-input" value="${escapeHtml(s.text)}" placeholder="Subtask..." maxlength="200">
+            <button type="button" class="subtask-row-remove" title="Remove">×</button>
+        </div>`;
+}
+
+function subtasksEditorHtml(subtasks) {
+    const vals = subtasks && subtasks.length ? subtasks : [{ text: '', completed: false }];
+    return `
+        <div class="subtask-rows">${vals.map(subtaskRowHtml).join('')}</div>
+        <button type="button" class="subtask-add-btn">+ Add subtask</button>`;
+}
+
+function insertSubtaskRow(editor) {
+    editor.querySelector('.subtask-rows').insertAdjacentHTML('beforeend', subtaskRowHtml({ text: '', completed: false }));
+    editor.querySelector('.subtask-row:last-child .subtask-row-input')?.focus();
+}
+
+function collectSubtasks(editor) {
+    return [...editor.querySelectorAll('.subtask-row')]
+        .map(row => ({
+            text: row.querySelector('.subtask-row-input').value.trim(),
+            completed: row.dataset.completed === '1',
+        }))
+        .filter(s => s.text);
+}
+
+function handleSubtaskRowClick(e) {
+    const addBtn = e.target.closest('.subtask-add-btn');
+    if (addBtn) {
+        insertSubtaskRow(addBtn.closest('.todo-subtasks-editor'));
+        return true;
+    }
+    const removeBtn = e.target.closest('.subtask-row-remove');
+    if (removeBtn) {
+        removeBtn.closest('.subtask-row').remove();
+        return true;
+    }
+    return false;
+}
+
+function handleSubtaskRowKeydown(e) {
+    if (e.key !== 'Enter') return false;
+    const input = e.target.closest('.subtask-row-input');
+    if (!input) return false;
+    e.preventDefault();
+    insertSubtaskRow(input.closest('.todo-subtasks-editor'));
+    return true;
+}
+
+function todoProgressHtml(subtasks) {
+    const done  = subtasks.filter(s => s.completed).length;
+    const total = subtasks.length;
+    const pct   = Math.round((done / total) * 100);
+    return `
+        <div class="todo-progress">
+            <div class="todo-progress-track"><div class="todo-progress-fill" style="width:${pct}%"></div></div>
+            <span class="todo-progress-count">${done}/${total}</span>
+        </div>`;
+}
 
 function renderTodos(items) {
     const listEl  = document.getElementById('todo-list');
@@ -300,22 +364,46 @@ function renderTodos(items) {
     listEl.innerHTML = '';
     items.forEach(item => {
         const li = document.createElement('li');
+        const subtasks = item.subtasks || [];
 
         if (item.id === editingTodoId) {
             li.className = 'item item-editing';
+            const hasSubtasks = subtasks.length > 0;
             li.innerHTML = `
                 <div class="edit-form">
                     <input type="text" class="add-input" id="edit-todo-text" value="${escapeHtml(item.text)}" maxlength="200">
                     <label class="link-toggle-label">
-                        <input type="checkbox" id="edit-todo-link-toggle" ${item.link ? 'checked' : ''}>
-                        <span>Add link</span>
+                        <input type="checkbox" id="edit-todo-subtasks-toggle" ${hasSubtasks ? 'checked' : ''}>
+                        <span>Break into subtasks</span>
                     </label>
-                    <input type="url" class="add-input edit-link-input" id="edit-todo-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." style="${item.link ? '' : 'display:none'}">
+                    <div class="todo-subtasks-editor" id="edit-todo-subtasks" style="${hasSubtasks ? '' : 'display:none'}">${subtasksEditorHtml(subtasks)}</div>
                     <div class="edit-actions">
                         <button class="edit-save-btn" data-id="${item.id}">Save</button>
                         <button class="edit-cancel-btn">Cancel</button>
                     </div>
                 </div>
+            `;
+        } else if (subtasks.length) {
+            const allDone = subtasks.every(s => s.completed);
+            li.className = 'item item-with-subtasks';
+            li.innerHTML = `
+                <div class="todo-main-row">
+                    <div class="item-checkbox ${allDone ? 'checked' : ''}" data-id="${item.id}" data-subtasks-toggle="1" title="Toggle all subtasks"></div>
+                    <div class="todo-content">
+                        <span class="item-text ${allDone ? 'completed' : ''}">${escapeHtml(item.text)}</span>
+                        ${todoProgressHtml(subtasks)}
+                    </div>
+                    <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                    <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+                </div>
+                <ul class="subtask-list">
+                    ${subtasks.map((s, i) => `
+                        <li class="subtask-item">
+                            <div class="subtask-checkbox ${s.completed ? 'checked' : ''}" data-id="${item.id}" data-index="${i}"></div>
+                            <span class="subtask-text ${s.completed ? 'completed' : ''}">${escapeHtml(s.text)}</span>
+                        </li>
+                    `).join('')}
+                </ul>
             `;
         } else {
             li.className = 'item';
@@ -352,20 +440,32 @@ function setupTodos() {
         console.error(err);
     });
 
+    const newSubtasksEditor = document.getElementById('todo-new-subtasks');
+    newSubtasksEditor.innerHTML = subtasksEditorHtml([]);
+
+    document.getElementById('todo-subtasks-toggle').addEventListener('change', e => {
+        newSubtasksEditor.style.display = e.target.checked ? 'block' : 'none';
+        if (e.target.checked) newSubtasksEditor.querySelector('.subtask-row-input')?.focus();
+    });
+
+    newSubtasksEditor.addEventListener('click', handleSubtaskRowClick);
+    newSubtasksEditor.addEventListener('keydown', handleSubtaskRowKeydown);
+
     async function addItem() {
         const text = document.getElementById('todo-input').value.trim();
-        const link = document.getElementById('todo-link').value.trim();
         if (!text) return;
+        const subtasksOn = document.getElementById('todo-subtasks-toggle').checked;
+        const subtasks   = subtasksOn ? collectSubtasks(newSubtasksEditor) : [];
 
-        document.getElementById('todo-input').value         = '';
-        document.getElementById('todo-link').value          = '';
-        document.getElementById('todo-link-toggle').checked = false;
-        document.getElementById('todo-link').style.display  = 'none';
+        document.getElementById('todo-input').value               = '';
+        document.getElementById('todo-subtasks-toggle').checked   = false;
+        newSubtasksEditor.style.display = 'none';
+        newSubtasksEditor.innerHTML     = subtasksEditorHtml([]);
 
         try {
             await addDoc(col, {
                 text,
-                link:      normalizeUrl(link),
+                subtasks,
                 completed: false,
                 createdAt: serverTimestamp()
             });
@@ -380,24 +480,17 @@ function setupTodos() {
         if (e.key === 'Enter') addItem();
     });
 
-    document.getElementById('todo-link-toggle').addEventListener('change', e => {
-        const input = document.getElementById('todo-link');
-        input.style.display = e.target.checked ? 'block' : 'none';
-        if (!e.target.checked) input.value = '';
-        else input.focus();
-    });
-
     listEl.addEventListener('change', e => {
-        const toggle = e.target.closest('#edit-todo-link-toggle');
+        const toggle = e.target.closest('#edit-todo-subtasks-toggle');
         if (!toggle) return;
-        const input = document.getElementById('edit-todo-link');
-        input.style.display = toggle.checked ? 'block' : 'none';
-        if (!toggle.checked) input.value = '';
-        else input.focus();
+        const editor = document.getElementById('edit-todo-subtasks');
+        editor.style.display = toggle.checked ? 'block' : 'none';
+        if (toggle.checked) editor.querySelector('.subtask-row-input')?.focus();
     });
 
     listEl.addEventListener('keydown', e => {
         if (!editingTodoId) return;
+        if (handleSubtaskRowKeydown(e)) return;
         if (e.key === 'Enter') {
             e.preventDefault();
             listEl.querySelector('.edit-save-btn')?.click();
@@ -409,11 +502,14 @@ function setupTodos() {
     });
 
     listEl.addEventListener('click', async e => {
-        const editBtn   = e.target.closest('.item-edit');
-        const saveBtn   = e.target.closest('.edit-save-btn');
-        const cancelBtn = e.target.closest('.edit-cancel-btn');
-        const checkbox  = e.target.closest('.item-checkbox');
-        const deleteBtn = e.target.closest('.item-delete');
+        if (handleSubtaskRowClick(e)) return;
+
+        const editBtn        = e.target.closest('.item-edit');
+        const saveBtn         = e.target.closest('.edit-save-btn');
+        const cancelBtn       = e.target.closest('.edit-cancel-btn');
+        const subtaskCheckbox = e.target.closest('.subtask-checkbox');
+        const checkbox        = e.target.closest('.item-checkbox');
+        const deleteBtn        = e.target.closest('.item-delete');
 
         if (editBtn) {
             editingTodoId = editBtn.dataset.id;
@@ -424,13 +520,13 @@ function setupTodos() {
 
         if (saveBtn) {
             const text = document.getElementById('edit-todo-text').value.trim();
-            const link = document.getElementById('edit-todo-link').value.trim();
             if (!text) return;
+            const subtasksOn = document.getElementById('edit-todo-subtasks-toggle').checked;
+            const subtasks   = subtasksOn ? collectSubtasks(document.getElementById('edit-todo-subtasks')) : [];
+            const existing   = currentTodos.find(t => t.id === saveBtn.dataset.id);
+            const completed  = subtasks.length ? subtasks.every(s => s.completed) : (existing?.completed || false);
             try {
-                await updateDoc(doc(db, 'todos', saveBtn.dataset.id), {
-                    text,
-                    link: normalizeUrl(link),
-                });
+                await updateDoc(doc(db, 'todos', saveBtn.dataset.id), { text, subtasks, completed });
                 editingTodoId = null;
                 renderTodos(currentTodos);
             } catch (err) {
@@ -445,13 +541,39 @@ function setupTodos() {
             return;
         }
 
+        if (subtaskCheckbox) {
+            const item = currentTodos.find(t => t.id === subtaskCheckbox.dataset.id);
+            if (!item) return;
+            const idx = parseInt(subtaskCheckbox.dataset.index, 10);
+            const subtasks = item.subtasks.map((s, i) => i === idx ? { ...s, completed: !s.completed } : s);
+            try {
+                await updateDoc(doc(db, 'todos', item.id), { subtasks, completed: subtasks.every(s => s.completed) });
+            } catch (err) {
+                setStatus('Failed to update item', true);
+            }
+            return;
+        }
+
         if (checkbox) {
+            if (checkbox.dataset.subtasksToggle) {
+                const item = currentTodos.find(t => t.id === checkbox.dataset.id);
+                if (!item) return;
+                const makeDone = !item.subtasks.every(s => s.completed);
+                const subtasks = item.subtasks.map(s => ({ ...s, completed: makeDone }));
+                try {
+                    await updateDoc(doc(db, 'todos', item.id), { subtasks, completed: makeDone });
+                } catch (err) {
+                    setStatus('Failed to update item', true);
+                }
+                return;
+            }
             const isChecked = checkbox.classList.contains('checked');
             try {
                 await updateDoc(doc(db, 'todos', checkbox.dataset.id), { completed: !isChecked });
             } catch (err) {
                 setStatus('Failed to update item', true);
             }
+            return;
         }
 
         if (deleteBtn) {
@@ -580,7 +702,7 @@ function renderProjects(items) {
     const groups = [
         { key: 'date',  label: '📅 Date',       items: items.filter(i =>  i.deadline).sort(sortAlphaDate) },
         { key: 'help',  label: '👥 Needs help',  items: items.filter(i => !i.deadline &&  i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
-        { key: 'plain', label: '✨ Someday',      items: items.filter(i => !i.deadline && !i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
+        { key: 'plain', label: '✨ Other',        items: items.filter(i => !i.deadline && !i.needsHelp).sort((a, b) => a.text.localeCompare(b.text, 'da')) },
     ];
 
     const today = new Date().toISOString().slice(0, 10);
@@ -670,7 +792,7 @@ function setupProjects() {
         const needsHelp = document.getElementById('projects-needs-help').checked;
         if (!text) return;
         if (!deadline && !needsHelp) {
-            setStatus('Add a date or mark "Needs help" to save a Someday item', true);
+            setStatus('Add a date or mark "Needs help" to save a Long Term Project', true);
             return;
         }
 
@@ -736,7 +858,7 @@ function setupProjects() {
             const needsHelp = document.getElementById('edit-project-needs-help').checked;
             if (!text) return;
             if (!deadline && !needsHelp) {
-                setStatus('Add a date or mark "Needs help" to save a Someday item', true);
+                setStatus('Add a date or mark "Needs help" to save a Long Term Project', true);
                 return;
             }
             try {

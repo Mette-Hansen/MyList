@@ -10,9 +10,9 @@
 | Collection | Fields |
 |---|---|
 | `groceries` | `text`, `category` (string), `completed` (bool), `createdAt` (serverTimestamp) |
-| `todos` | `text`, `deadline` (YYYY-MM-DD/null — unused by current UI), `link` (URL string/null), `completed` (bool), `createdAt` (serverTimestamp). Legacy docs may still carry `priority`/`needsHelp`; the UI no longer sets or reads them. |
-| `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
-| `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp). A project must have a `deadline` and/or `needsHelp: true` — the add/edit form blocks saving one with neither. |
+| `todos` | Displayed as **Short Term Projects**. `text`, `subtasks` (array of `{ text, completed }` — when non-empty, the item shows a progress bar instead of its own checkbox; the checkbox instead bulk-toggles all subtasks), `completed` (bool — derived from subtasks when any exist), `createdAt` (serverTimestamp). Legacy docs may still carry `priority`/`needsHelp`/`link`/`deadline`; the UI no longer sets them, but a legacy `link` still renders as a clickable item when no subtasks are present. |
+| `shopping` | Displayed as **Buy List**. `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
+| `projects` | Displayed as **Long Term Projects**. `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp). A project must have a `deadline` and/or `needsHelp: true` — the add/edit form blocks saving one with neither. |
 | `recipes` | `text`, `type` (always `created` now; `link` is a legacy value), `link` (URL string/null — original recipe source for created recipes, or the destination URL for legacy link recipes), `ingredients` (array of strings), `steps` (array of `{ text, ingredients }`, where `ingredients` is a string array used to render highlighted tags under the step — legacy plain-string steps are still supported via `normalizeStep()`), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern

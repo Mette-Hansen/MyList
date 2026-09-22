@@ -37,34 +37,11 @@
             </div>
         </div>
 
-        <!-- To Do Section -->
-        <div class="section">
-            <div class="section-header">
-                <span class="section-icon">✅</span>
-                <span class="section-title">To Do</span>
-                <span class="item-count" id="todo-count">—</span>
-            </div>
-            <ul class="items-list" id="todo-list">
-                <li class="empty-state">No tasks yet — add one below!</li>
-            </ul>
-            <div class="todo-add-form">
-                <input type="text" class="add-input todo-text-input" id="todo-input" placeholder="Add a task..." maxlength="200">
-                <button class="add-btn" id="todo-add">+</button>
-                <div class="todo-link-section">
-                    <label class="link-toggle-label">
-                        <input type="checkbox" id="todo-link-toggle">
-                        <span>Add link</span>
-                    </label>
-                    <input type="url" class="add-input" id="todo-link" placeholder="Paste link..." style="display:none">
-                </div>
-            </div>
-        </div>
-
         <!-- Shopping Overview Section -->
         <div class="section">
             <div class="section-header">
                 <span class="section-icon">🏠</span>
-                <span class="section-title">Home Projects</span>
+                <span class="section-title">Buy List</span>
                 <span class="item-count" id="shopping-count">—</span>
             </div>
 
@@ -86,11 +63,32 @@
             </div>
         </div>
 
+        <!-- To Do Section -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">✅</span>
+                <span class="section-title">Short Term Projects</span>
+                <span class="item-count" id="todo-count">—</span>
+            </div>
+            <ul class="items-list" id="todo-list">
+                <li class="empty-state">No tasks yet — add one below!</li>
+            </ul>
+            <div class="todo-add-form">
+                <input type="text" class="add-input todo-text-input" id="todo-input" placeholder="Add a task..." maxlength="200">
+                <button class="add-btn" id="todo-add">+</button>
+                <label class="link-toggle-label">
+                    <input type="checkbox" id="todo-subtasks-toggle">
+                    <span>Break into subtasks</span>
+                </label>
+                <div class="todo-subtasks-editor" id="todo-new-subtasks" style="display:none"></div>
+            </div>
+        </div>
+
         <!-- Someday List Section -->
         <div class="section">
             <div class="section-header">
                 <span class="section-icon">🌟</span>
-                <span class="section-title">Someday List</span>
+                <span class="section-title">Long Term Projects</span>
                 <span class="item-count" id="projects-count">—</span>
             </div>
             <ul class="items-list" id="projects-list">
