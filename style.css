@@ -681,7 +681,7 @@ h1 {
 
 .shopping-add-form {
     display: grid;
-    grid-template-columns: 2fr 2fr 1fr 1fr auto;
+    grid-template-columns: 2fr 2fr 1fr 1fr 2fr auto;
     gap: 8px;
     align-items: center;
 }
@@ -708,7 +708,8 @@ h1 {
     }
 
     .shopping-add-form #shop-item,
-    .shopping-add-form #shop-store {
+    .shopping-add-form #shop-store,
+    .shopping-add-form #shop-link {
         grid-column: 1 / -1;
     }
 

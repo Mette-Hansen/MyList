@@ -54,12 +54,8 @@
                 <input type="text"   class="add-input" id="shop-store" placeholder="Store"          maxlength="100">
                 <input type="number" class="add-input" id="shop-price" placeholder="Price"          min="0" step="1">
                 <input type="number" class="add-input" id="shop-qty"   placeholder="Qty"            min="1" step="1" value="1">
+                <input type="url"    class="add-input shop-link-input" id="shop-link" placeholder="Link (required)" required>
                 <button class="add-btn" id="shopping-add">+</button>
-                <label class="link-toggle-label" id="shop-link-label">
-                    <input type="checkbox" id="shop-link-toggle">
-                    <span>Add link</span>
-                </label>
-                <input type="url" class="add-input shop-link-input" id="shop-link" placeholder="Paste link..." style="display:none">
             </div>
         </div>
 
@@ -122,6 +118,10 @@
 
             <div class="recipe-add-form-new" id="recipe-form-new">
                 <input type="text" class="add-input" id="recipe-new-input" placeholder="Recipe name..." maxlength="200">
+                <select class="add-input" id="recipe-new-category">
+                    <option value="dinner">Dinner</option>
+                    <option value="baking">Baking</option>
+                </select>
                 <label class="link-toggle-label">
                     <input type="checkbox" id="recipe-new-link-toggle">
                     <span>Add original recipe link</span>

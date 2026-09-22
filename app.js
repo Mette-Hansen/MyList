@@ -969,11 +969,7 @@ function renderShopping(items) {
                                 <input type="text"   class="add-input" id="edit-shop-store" value="${escapeHtml(item.store || '')}" maxlength="100" placeholder="Store">
                                 <input type="number" class="add-input" id="edit-shop-price" value="${item.price ?? ''}" min="0" step="1" placeholder="Price">
                                 <input type="number" class="add-input" id="edit-shop-qty"   value="${item.qty || 1}"   min="1" step="1" placeholder="Qty">
-                                <label class="link-toggle-label">
-                                    <input type="checkbox" id="edit-shop-link-toggle" ${item.link ? 'checked' : ''}>
-                                    <span>Add link</span>
-                                </label>
-                                <input type="url" class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Paste link..." style="${item.link ? '' : 'display:none'}">
+                                <input type="url" class="add-input edit-link-input" id="edit-shop-link" value="${escapeHtml(item.link || '')}" placeholder="Link (required)" required>
                                 <div class="shopping-edit-actions">
                                     <button class="edit-save-btn" data-id="${item.id}">Save</button>
                                     <button class="edit-cancel-btn">Cancel</button>
@@ -1047,14 +1043,16 @@ function setupShopping() {
         const qty   = document.getElementById('shop-qty').value || '1';
         const link  = document.getElementById('shop-link').value.trim();
         if (!text) return;
+        if (!link) {
+            setStatus('Add a link to save a Buy List item', true);
+            return;
+        }
 
-        document.getElementById('shop-item').value          = '';
-        document.getElementById('shop-store').value         = '';
-        document.getElementById('shop-price').value         = '';
-        document.getElementById('shop-qty').value           = '1';
-        document.getElementById('shop-link').value          = '';
-        document.getElementById('shop-link-toggle').checked = false;
-        document.getElementById('shop-link').style.display = 'none';
+        document.getElementById('shop-item').value  = '';
+        document.getElementById('shop-store').value = '';
+        document.getElementById('shop-price').value = '';
+        document.getElementById('shop-qty').value   = '1';
+        document.getElementById('shop-link').value  = '';
 
         try {
             await addDoc(col, {
@@ -1079,23 +1077,7 @@ function setupShopping() {
         });
     });
 
-    document.getElementById('shop-link-toggle').addEventListener('change', e => {
-        const input = document.getElementById('shop-link');
-        input.style.display = e.target.checked ? 'block' : 'none';
-        if (!e.target.checked) input.value = '';
-        else input.focus();
-    });
-
     const wrap = document.getElementById('shopping-table-wrap');
-
-    wrap.addEventListener('change', e => {
-        const toggle = e.target.closest('#edit-shop-link-toggle');
-        if (!toggle) return;
-        const input = document.getElementById('edit-shop-link');
-        input.style.display = toggle.checked ? 'block' : 'none';
-        if (!toggle.checked) input.value = '';
-        else input.focus();
-    });
 
     wrap.addEventListener('keydown', e => {
         if (!editingShoppingId) return;
@@ -1130,6 +1112,10 @@ function setupShopping() {
             const qty   = document.getElementById('edit-shop-qty').value || '1';
             const link  = document.getElementById('edit-shop-link').value.trim();
             if (!text) return;
+            if (!link) {
+                setStatus('Add a link to save a Buy List item', true);
+                return;
+            }
             try {
                 await updateDoc(doc(db, 'shopping', saveBtn.dataset.id), {
                     text,
@@ -1197,13 +1183,13 @@ function ingredientRowHtml(value = '') {
 
 function stepRowHtml(step, number = null) {
     const s = normalizeStep(step);
-    const ingredientsStr = s.ingredients.join(', ');
+    const ingredientsStr = s.ingredients.join('; ');
     return `
         <div class="recipe-row recipe-step-row">
             <span class="row-num">${number != null ? number + '.' : ''}</span>
             <div class="recipe-step-row-fields">
                 <input type="text" class="add-input recipe-row-input" value="${escapeHtml(s.text)}" placeholder="Describe this step" maxlength="300">
-                <input type="text" class="add-input recipe-step-ingredients-input" value="${escapeHtml(ingredientsStr)}" placeholder="Ingredients used in this step (optional, comma-separated)" maxlength="300">
+                <input type="text" class="add-input recipe-step-ingredients-input" value="${escapeHtml(ingredientsStr)}" placeholder="Ingredients used in this step (optional, semicolon-separated)" maxlength="300">
             </div>
             <button type="button" class="row-remove" title="Remove">×</button>
         </div>`;
@@ -1253,7 +1239,7 @@ function collectStepValues(sectionEl) {
         .map(row => {
             const text = row.querySelector('.recipe-row-input').value.trim();
             const ingredientsRaw = row.querySelector('.recipe-step-ingredients-input').value.trim();
-            const ingredients = ingredientsRaw ? ingredientsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+            const ingredients = ingredientsRaw ? ingredientsRaw.split(';').map(s => s.trim()).filter(Boolean) : [];
             return { text, ingredients };
         })
         .filter(s => s.text);
@@ -1314,6 +1300,10 @@ function editRecipeFormHtml(item) {
     return `
         <div class="edit-form">
             <input type="text" class="add-input" id="edit-recipe-text" value="${escapeHtml(item.text)}" maxlength="200">
+            <select class="add-input" id="edit-recipe-category">
+                <option value="dinner" ${item.category === 'dinner' ? 'selected' : ''}>Dinner</option>
+                <option value="baking" ${item.category === 'baking' ? 'selected' : ''}>Baking</option>
+            </select>
             <label class="link-toggle-label">
                 <input type="checkbox" id="edit-recipe-link-toggle" ${item.link ? 'checked' : ''}>
                 <span>Add original recipe link</span>
@@ -1344,29 +1334,45 @@ function renderRecipes(items) {
 
     countEl.textContent = `${items.length} recipe${items.length === 1 ? '' : 's'}`;
 
-    const sorted = [...items].sort((a, b) => a.text.localeCompare(b.text, 'da'));
+    const CATEGORIES = [
+        { key: 'dinner', label: '🍽 Dinner' },
+        { key: 'baking', label: '🧁 Baking' },
+    ];
+    const sortAlpha = (a, b) => a.text.localeCompare(b.text, 'da');
+    const groups = [
+        ...CATEGORIES.map(c => ({ ...c, items: items.filter(i => i.category === c.key).sort(sortAlpha) })),
+        { key: 'other', label: '✨ Other', items: items.filter(i => !CATEGORIES.some(c => c.key === i.category)).sort(sortAlpha) },
+    ];
 
     listEl.innerHTML = '';
-    sorted.forEach(item => {
-        const li = document.createElement('li');
+    groups.forEach(group => {
+        if (group.items.length === 0) return;
+        const header = document.createElement('li');
+        header.className = 'category-header';
+        header.textContent = group.label;
+        listEl.appendChild(header);
 
-        if (item.id === editingRecipeId) {
-            li.className = 'item item-editing';
-            li.innerHTML = editRecipeFormHtml(item);
-        } else {
-            li.className = 'item';
+        group.items.forEach(item => {
+            const li = document.createElement('li');
 
-            const legacyLink = !isCreatedRecipe(item) && item.link ? safeUrl(item.link) : null;
-            const href = legacyLink || `index.html?recipe=${encodeURIComponent(item.id)}`;
-            const textContent = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text)}</a>`;
+            if (item.id === editingRecipeId) {
+                li.className = 'item item-editing';
+                li.innerHTML = editRecipeFormHtml(item);
+            } else {
+                li.className = 'item';
 
-            li.innerHTML = `
-                <span class="item-text">${textContent}</span>
-                <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
-                <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
-            `;
-        }
-        listEl.appendChild(li);
+                const legacyLink = !isCreatedRecipe(item) && item.link ? safeUrl(item.link) : null;
+                const href = legacyLink || `index.html?recipe=${encodeURIComponent(item.id)}`;
+                const textContent = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text)}</a>`;
+
+                li.innerHTML = `
+                    <span class="item-text">${textContent}</span>
+                    <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
+                    <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
+                `;
+            }
+            listEl.appendChild(li);
+        });
     });
 }
 
@@ -1391,6 +1397,7 @@ function setupRecipes() {
 
     function resetNewRecipeForm() {
         document.getElementById('recipe-new-input').value          = '';
+        document.getElementById('recipe-new-category').value       = 'dinner';
         document.getElementById('recipe-new-link').value            = '';
         document.getElementById('recipe-new-link-toggle').checked   = false;
         document.getElementById('recipe-new-link').style.display    = 'none';
@@ -1409,7 +1416,8 @@ function setupRecipes() {
     async function addNewRecipe() {
         const text = document.getElementById('recipe-new-input').value.trim();
         if (!text) return;
-        const link       = document.getElementById('recipe-new-link').value.trim();
+        const category    = document.getElementById('recipe-new-category').value;
+        const link         = document.getElementById('recipe-new-link').value.trim();
         const ingredients = collectRowValues(newIngredientsEl);
         const steps       = collectStepValues(newStepsEl);
 
@@ -1417,6 +1425,7 @@ function setupRecipes() {
             await addDoc(col, {
                 text,
                 type: 'created',
+                category,
                 link: normalizeUrl(link),
                 ingredients,
                 steps,
@@ -1486,6 +1495,7 @@ function setupRecipes() {
             const updates = {
                 text,
                 type: 'created',
+                category: document.getElementById('edit-recipe-category').value,
                 link: normalizeUrl(document.getElementById('edit-recipe-link').value.trim()),
                 ingredients: collectRowValues(document.getElementById('edit-recipe-ingredients')),
                 steps: collectStepValues(document.getElementById('edit-recipe-steps')),
