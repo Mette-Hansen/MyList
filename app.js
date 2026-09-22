@@ -281,12 +281,6 @@ setupGroceries();
 
 // ── To Do ────────────────────────────────────────────────────────────
 
-const PRIORITY = {
-    high: { cls: 'priority-high', label: 'High' },
-    mid:  { cls: 'priority-mid',  label: 'Mid'  },
-    low:  { cls: 'priority-low',  label: 'Low'  },
-};
-
 let editingTodoId = null;
 let currentTodos  = [];
 
@@ -312,18 +306,6 @@ function renderTodos(items) {
             li.innerHTML = `
                 <div class="edit-form">
                     <input type="text" class="add-input" id="edit-todo-text" value="${escapeHtml(item.text)}" maxlength="200">
-                    <div class="todo-edit-secondary">
-                        <select class="add-input" id="edit-todo-priority">
-                            <option value="">Priority</option>
-                            <option value="high" ${item.priority === 'high' ? 'selected' : ''}>High</option>
-                            <option value="mid" ${item.priority === 'mid' ? 'selected' : ''}>Mid</option>
-                            <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
-                        </select>
-                        <label class="todo-needs-help-label">
-                            <input type="checkbox" id="edit-todo-needs-help" ${item.needsHelp ? 'checked' : ''}>
-                            <span>Needs help</span>
-                        </label>
-                    </div>
                     <label class="link-toggle-label">
                         <input type="checkbox" id="edit-todo-link-toggle" ${item.link ? 'checked' : ''}>
                         <span>Add link</span>
@@ -338,19 +320,6 @@ function renderTodos(items) {
         } else {
             li.className = 'item';
 
-            const pri = PRIORITY[item.priority];
-            const priorityBadge = pri
-                ? `<span class="todo-priority ${pri.cls}">${pri.label}</span>`
-                : '';
-
-            const metaParts = [];
-            if (item.needsHelp) {
-                metaParts.push(`<span class="todo-needs-help-meta">👥 Needs help</span>`);
-            }
-            const metaHtml = metaParts.length
-                ? `<div class="todo-meta">${metaParts.join('')}</div>`
-                : '';
-
             const href = safeUrl(item.link);
             const textContent = href
                 ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text)}</a>`
@@ -360,9 +329,7 @@ function renderTodos(items) {
                 <div class="item-checkbox ${item.completed ? 'checked' : ''}" data-id="${item.id}"></div>
                 <div class="todo-content">
                     <span class="item-text ${item.completed ? 'completed' : ''}">${textContent}</span>
-                    ${metaHtml}
                 </div>
-                ${priorityBadge}
                 <button class="item-edit" data-id="${item.id}" title="Edit">✎</button>
                 <button class="item-delete" data-id="${item.id}" title="Delete">×</button>
             `;
@@ -386,15 +353,11 @@ function setupTodos() {
     });
 
     async function addItem() {
-        const text      = document.getElementById('todo-input').value.trim();
-        const priority  = document.getElementById('todo-priority').value;
-        const needsHelp = document.getElementById('todo-needs-help').checked;
-        const link      = document.getElementById('todo-link').value.trim();
+        const text = document.getElementById('todo-input').value.trim();
+        const link = document.getElementById('todo-link').value.trim();
         if (!text) return;
 
         document.getElementById('todo-input').value         = '';
-        document.getElementById('todo-priority').value      = '';
-        document.getElementById('todo-needs-help').checked  = false;
         document.getElementById('todo-link').value          = '';
         document.getElementById('todo-link-toggle').checked = false;
         document.getElementById('todo-link').style.display  = 'none';
@@ -402,8 +365,6 @@ function setupTodos() {
         try {
             await addDoc(col, {
                 text,
-                priority:  priority  || null,
-                needsHelp: needsHelp,
                 link:      normalizeUrl(link),
                 completed: false,
                 createdAt: serverTimestamp()
@@ -437,7 +398,7 @@ function setupTodos() {
 
     listEl.addEventListener('keydown', e => {
         if (!editingTodoId) return;
-        if (e.key === 'Enter' && e.target.tagName !== 'SELECT') {
+        if (e.key === 'Enter') {
             e.preventDefault();
             listEl.querySelector('.edit-save-btn')?.click();
         }
@@ -462,17 +423,13 @@ function setupTodos() {
         }
 
         if (saveBtn) {
-            const text      = document.getElementById('edit-todo-text').value.trim();
-            const priority  = document.getElementById('edit-todo-priority').value;
-            const needsHelp = document.getElementById('edit-todo-needs-help').checked;
-            const link      = document.getElementById('edit-todo-link').value.trim();
+            const text = document.getElementById('edit-todo-text').value.trim();
+            const link = document.getElementById('edit-todo-link').value.trim();
             if (!text) return;
             try {
                 await updateDoc(doc(db, 'todos', saveBtn.dataset.id), {
                     text,
-                    priority:  priority  || null,
-                    needsHelp: needsHelp,
-                    link:      normalizeUrl(link),
+                    link: normalizeUrl(link),
                 });
                 editingTodoId = null;
                 renderTodos(currentTodos);
@@ -712,6 +669,10 @@ function setupProjects() {
         const deadline  = document.getElementById('projects-deadline').value;
         const needsHelp = document.getElementById('projects-needs-help').checked;
         if (!text) return;
+        if (!deadline && !needsHelp) {
+            setStatus('Add a date or mark "Needs help" to save a Someday item', true);
+            return;
+        }
 
         document.getElementById('projects-input').value        = '';
         document.getElementById('projects-deadline').value     = '';
@@ -774,6 +735,10 @@ function setupProjects() {
             const deadline  = document.getElementById('edit-project-deadline').value;
             const needsHelp = document.getElementById('edit-project-needs-help').checked;
             if (!text) return;
+            if (!deadline && !needsHelp) {
+                setStatus('Add a date or mark "Needs help" to save a Someday item', true);
+                return;
+            }
             try {
                 await updateDoc(doc(db, 'projects', saveBtn.dataset.id), {
                     text,

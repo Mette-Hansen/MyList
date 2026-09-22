@@ -10,9 +10,9 @@
 | Collection | Fields |
 |---|---|
 | `groceries` | `text`, `category` (string), `completed` (bool), `createdAt` (serverTimestamp) |
-| `todos` | `text`, `priority` (high/mid/low/null), `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `link` (URL string/null), `completed` (bool), `createdAt` (serverTimestamp) |
+| `todos` | `text`, `deadline` (YYYY-MM-DD/null — unused by current UI), `link` (URL string/null), `completed` (bool), `createdAt` (serverTimestamp). Legacy docs may still carry `priority`/`needsHelp`; the UI no longer sets or reads them. |
 | `shopping` | `text`, `store` (string), `price` (integer DKK/null), `qty` (integer), `completed` (bool), `createdAt` (serverTimestamp) |
-| `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp) |
+| `projects` | `text`, `deadline` (YYYY-MM-DD/null), `needsHelp` (bool), `completed` (bool), `createdAt` (serverTimestamp). A project must have a `deadline` and/or `needsHelp: true` — the add/edit form blocks saving one with neither. |
 | `recipes` | `text`, `type` (always `created` now; `link` is a legacy value), `link` (URL string/null — original recipe source for created recipes, or the destination URL for legacy link recipes), `ingredients` (array of strings), `steps` (array of `{ text, ingredients }`, where `ingredients` is a string array used to render highlighted tags under the step — legacy plain-string steps are still supported via `normalizeStep()`), `createdAt` (serverTimestamp) |
 
 ## Rendering pattern

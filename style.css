@@ -272,24 +272,9 @@ h1 {
     color: #8b6f47;
 }
 
-.todo-priority {
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 20px;
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-    align-self: flex-start;
-    margin-top: 1px;
-}
-
-.priority-high { background: #fdecea; color: #c0504a; }
-.priority-mid  { background: #fef6e4; color: #b7770d; }
-.priority-low  { background: #eaf3ea; color: #4a7a4a; }
-
 .todo-add-form {
     display: grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: 1fr auto;
     gap: 8px;
     align-items: center;
 }
@@ -328,14 +313,6 @@ h1 {
     }
 
     .grocery-text-input {
-        grid-column: 1 / -1;
-    }
-
-    .todo-add-form {
-        grid-template-columns: 1fr auto auto;
-    }
-
-    .todo-text-input {
         grid-column: 1 / -1;
     }
 
@@ -618,12 +595,6 @@ h1 {
 .edit-form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-}
-
-.todo-edit-secondary {
-    display: grid;
-    grid-template-columns: 1fr auto;
     gap: 8px;
 }
 
